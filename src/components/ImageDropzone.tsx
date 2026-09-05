@@ -131,79 +131,65 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
-            {/* Image Preview Box */}
-            <div className="relative w-full sm:w-40 h-44 sm:h-40 rounded-md overflow-hidden bg-[#f6f5f4] border border-[#e5e3df] flex items-center justify-center shrink-0">
+          <div className="w-full space-y-2.5 min-w-0">
+            {/* Full Original Image Preview Box (No Cropping, Natural Proportions) */}
+            <div className="relative w-full rounded-md overflow-hidden bg-[#f6f5f4] border border-[#e5e3df] flex items-center justify-center p-2 min-h-[140px] max-h-[360px]">
               <img
                 src={imagePreview}
-                alt="Selected reference"
-                className="w-full h-full object-cover"
+                alt={imageMeta?.name || 'Selected reference'}
+                className="max-h-[340px] w-auto max-w-full object-contain rounded shadow-2xs"
               />
-              <span className="absolute top-2 left-2 bg-[#0a1530]/85 text-white text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-xs">
+              <span className="absolute top-2 left-2 bg-[#0a1530]/85 text-white text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-xs shadow-xs">
                 Visual Context
               </span>
               <button
                 onClick={onImageRemoved}
                 disabled={isScanning}
-                className="sm:hidden absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
-                title="Remove"
+                className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/85 text-white rounded-full transition-colors cursor-pointer shadow-xs"
+                title="Remove Image"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            {/* Image Details */}
-            <div className="flex-1 w-full text-left flex flex-col justify-between py-1">
-              <div>
-                <div className="hidden sm:flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="w-2 h-2 rounded-full bg-[#1aae39] shrink-0"></span>
-                    <span className="text-xs font-semibold text-[#1a1a1a] truncate">
-                      {imageMeta?.name || 'Uploaded Artwork'}
-                    </span>
-                  </div>
-                  <button
-                    onClick={onImageRemoved}
-                    disabled={isScanning}
-                    className="p-1 hover:bg-[#f6f5f4] text-[#787671] hover:text-[#e03131] rounded transition-colors cursor-pointer"
-                    title="Remove Image"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+            {/* Image Details Metadata */}
+            <div className="w-full text-left min-w-0 space-y-2">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-1.5 truncate min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-[#1aae39] shrink-0"></span>
+                  <span className="text-xs font-semibold text-[#1a1a1a] truncate" title={imageMeta?.name}>
+                    {imageMeta?.name || 'Uploaded Artwork'}
+                  </span>
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 my-1 sm:my-2 text-xs">
-                  <div className="bg-[#f6f5f4] p-2 rounded border border-[#ede9e4]">
-                    <span className="text-[10px] text-[#787671] block">Size</span>
-                    <span className="font-medium text-[#37352f] text-[11px] truncate block">
-                      {imageMeta?.size || 'Direct stream'}
-                    </span>
-                  </div>
-                  <div className="bg-[#f6f5f4] p-2 rounded border border-[#ede9e4]">
-                    <span className="text-[10px] text-[#787671] block">Dimensions</span>
-                    <span className="font-medium text-[#37352f] text-[11px] truncate block">
-                      {imageMeta?.dimensions || 'Auto'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-[11px] text-[#5d5b54] bg-[#d9f3e1]/40 border border-[#d9f3e1] p-1.5 sm:p-2 rounded flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-[#1aae39] shrink-0" />
-                  <span>Ready for aesthetic & prompt indexing.</span>
-                </div>
-              </div>
-
-              {/* Replace Button */}
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#ede9e4] mt-2">
                 <button
                   type="button"
                   disabled={isScanning}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 text-xs text-[#5645d4] hover:text-[#4534b3] font-medium px-2 py-1.5 rounded hover:bg-[#e6e0f5]/30 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-[11px] text-[#5645d4] hover:text-[#4534b3] font-medium px-2 py-0.5 rounded hover:bg-[#e6e0f5]/40 transition-colors cursor-pointer shrink-0"
                 >
                   <RefreshCw className="w-3 h-3" />
-                  <span>Replace Artwork</span>
+                  <span>Replace</span>
                 </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-[#f6f5f4] p-2 rounded border border-[#ede9e4] min-w-0">
+                  <span className="text-[10px] text-[#787671] block">Size</span>
+                  <span className="font-medium text-[#37352f] text-[11px] truncate block">
+                    {imageMeta?.size || 'Direct stream'}
+                  </span>
+                </div>
+                <div className="bg-[#f6f5f4] p-2 rounded border border-[#ede9e4] min-w-0">
+                  <span className="text-[10px] text-[#787671] block">Dimensions</span>
+                  <span className="font-medium text-[#37352f] text-[11px] truncate block">
+                    {imageMeta?.dimensions || 'Auto'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-[#5d5b54] bg-[#d9f3e1]/40 border border-[#d9f3e1] p-1.5 rounded flex items-center gap-1.5 min-w-0">
+                <Check className="w-3.5 h-3.5 text-[#1aae39] shrink-0" />
+                <span className="truncate">Ready for aesthetic & prompt indexing.</span>
               </div>
             </div>
           </div>

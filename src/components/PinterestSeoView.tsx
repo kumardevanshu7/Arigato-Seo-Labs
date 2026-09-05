@@ -102,26 +102,26 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
         {/* Left Column: Generator Inputs (5 cols) */}
-        <div className="lg:col-span-5 space-y-5">
+        <div className="lg:col-span-5 space-y-5 min-w-0 w-full">
           {/* Main Input Card */}
-          <div className="bg-white rounded-xl border border-[#e5e3df] p-4 sm:p-6 shadow-xs">
-            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#ede9e4] mb-4 sm:mb-5">
-              <div className="flex items-center gap-2">
+          <div className="bg-white rounded-xl border border-[#e5e3df] p-4 sm:p-5 shadow-xs min-w-0 overflow-hidden">
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#ede9e4] mb-4 sm:mb-5 min-w-0 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <div className="w-7 h-7 rounded-md bg-[#e60023] text-white flex items-center justify-center shrink-0">
                   <Pin className="w-4 h-4 fill-white" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-[#1a1a1a]">Pinterest Pin Creator</h3>
-                  <p className="text-[11px] text-[#787671]">Step 1: Upload visual & describe prompt</p>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-[#1a1a1a] truncate">Pinterest Pin Creator</h3>
+                  <p className="text-[11px] text-[#787671] truncate">Step 1: Upload visual & describe prompt</p>
                 </div>
               </div>
-              <span className="text-[10px] sm:text-[11px] font-semibold text-[#e60023] bg-[#fde0ec] px-2 py-0.5 rounded-full">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-[#e60023] bg-[#fde0ec] px-2 py-0.5 rounded-full shrink-0">
                 Pinterest Engine
               </span>
             </div>
 
             {/* Image Upload Dropzone */}
-            <div className="mb-4 sm:mb-5">
+            <div className="mb-4 sm:mb-5 min-w-0">
               <label className="block text-xs font-semibold text-[#37352f] mb-1.5 sm:mb-2">
                 Pin Artwork / Reference Image
               </label>
@@ -140,30 +140,30 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
             </div>
 
             {/* Pinterest Strategy & Output Structure Selector */}
-            <div className="mb-4 sm:mb-5">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-[#37352f]">
+            <div className="mb-4 sm:mb-5 min-w-0">
+              <div className="flex items-center justify-between mb-1.5 min-w-0 gap-2">
+                <label className="text-xs font-semibold text-[#37352f] truncate">
                   Pinterest Pin Strategy & Structure
                 </label>
-                <span className="text-[10px] font-semibold text-[#e60023]">
+                <span className="text-[10px] font-semibold text-[#e60023] shrink-0">
                   {pinterestFormat === 'with_link' ? '🔗 Outbound Link' : '🔍 Google Discovery'}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 p-1 bg-[#f4f3f0] rounded-lg border border-[#e5e3df]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1 bg-[#f4f3f0] rounded-lg border border-[#e5e3df] min-w-0">
                 <button
                   type="button"
                   onClick={() => setPinterestFormat('with_link')}
-                  className={`flex flex-col items-start p-2 sm:p-2.5 rounded-md transition-all text-left cursor-pointer ${
+                  className={`flex flex-col items-start p-2 sm:p-2.5 rounded-md transition-all text-left cursor-pointer min-w-0 w-full overflow-hidden ${
                     pinterestFormat === 'with_link'
                       ? 'bg-white shadow-xs border border-[#e60023]/30 text-[#1a1a1a]'
                       : 'text-[#787671] hover:text-[#1a1a1a] hover:bg-white/60'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className={`w-2 h-2 rounded-full ${pinterestFormat === 'with_link' ? 'bg-[#e60023]' : 'bg-gray-300'}`} />
-                    <span className="text-xs font-semibold">1. With Website Link</span>
+                  <div className="flex items-center gap-1.5 mb-0.5 w-full min-w-0">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${pinterestFormat === 'with_link' ? 'bg-[#e60023]' : 'bg-gray-300'}`} />
+                    <span className="text-xs font-semibold truncate">1. With Website Link</span>
                   </div>
-                  <span className="text-[10px] text-[#787671] line-clamp-1">
+                  <span className="text-[10px] text-[#787671] truncate block w-full">
                     Adds &ldquo;| Click Visit Site for Prompt&rdquo;
                   </span>
                 </button>
@@ -171,17 +171,17 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setPinterestFormat('search_steps')}
-                  className={`flex flex-col items-start p-2 sm:p-2.5 rounded-md transition-all text-left cursor-pointer ${
+                  className={`flex flex-col items-start p-2 sm:p-2.5 rounded-md transition-all text-left cursor-pointer min-w-0 w-full overflow-hidden ${
                     pinterestFormat === 'search_steps'
                       ? 'bg-white shadow-xs border border-[#5645d4]/30 text-[#1a1a1a]'
                       : 'text-[#787671] hover:text-[#1a1a1a] hover:bg-white/60'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className={`w-2 h-2 rounded-full ${pinterestFormat === 'search_steps' ? 'bg-[#5645d4]' : 'bg-gray-300'}`} />
-                    <span className="text-xs font-semibold">2. Search Steps (No Link)</span>
+                  <div className="flex items-center gap-1.5 mb-0.5 w-full min-w-0">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${pinterestFormat === 'search_steps' ? 'bg-[#5645d4]' : 'bg-gray-300'}`} />
+                    <span className="text-xs font-semibold truncate">2. Search Steps (No Link)</span>
                   </div>
-                  <span className="text-[10px] text-[#787671] line-clamp-1">
+                  <span className="text-[10px] text-[#787671] truncate block w-full">
                     Adds Google &ldquo;Arigato Devan&rdquo; steps
                   </span>
                 </button>
@@ -303,7 +303,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
         </div>
 
         {/* Right Column: Output & Live Pin Preview (7 cols) */}
-        <div className="lg:col-span-7 space-y-5 sm:space-y-6">
+        <div className="lg:col-span-7 space-y-5 sm:space-y-6 min-w-0 w-full">
           {!result && !isGenerating ? (
             /* Empty State */
             <div className="bg-white rounded-xl border border-[#e5e3df] p-8 sm:p-12 text-center shadow-xs">

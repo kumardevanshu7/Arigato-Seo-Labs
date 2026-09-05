@@ -100,17 +100,17 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
         {/* Left Column: Generator Inputs (5 cols) */}
-        <div className="lg:col-span-5 space-y-5">
+        <div className="lg:col-span-5 space-y-5 min-w-0 w-full">
           {/* Main Input Card */}
-          <div className="bg-white rounded-xl border border-[#e5e3df] p-4 sm:p-6 shadow-xs">
-            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#ede9e4] mb-4 sm:mb-5">
-              <div className="flex items-center gap-2">
+          <div className="bg-white rounded-xl border border-[#e5e3df] p-4 sm:p-5 shadow-xs min-w-0 overflow-hidden">
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#ede9e4] mb-4 sm:mb-5 min-w-0 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <div className="w-7 h-7 rounded-md bg-[#5645d4] text-white flex items-center justify-center shrink-0">
                   <Globe className="w-4 h-4" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-[#1a1a1a]">Arigato Site SEO Studio</h3>
-                  <p className="text-[11px] text-[#787671]">Step 1: Upload artwork & enter prompt</p>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-[#1a1a1a] truncate">Arigato Site SEO Studio</h3>
+                  <p className="text-[11px] text-[#787671] truncate">Step 1: Upload artwork & enter prompt</p>
                 </div>
               </div>
               <span className="text-[10px] sm:text-[11px] font-semibold text-[#5645d4] bg-[#e6e0f5] px-2 py-0.5 rounded-full">
@@ -268,7 +268,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
         </div>
 
         {/* Right Column: Output & SERP Preview (7 cols) */}
-        <div className="lg:col-span-7 space-y-5 sm:space-y-6">
+        <div className="lg:col-span-7 space-y-5 sm:space-y-6 min-w-0 w-full">
           {!result && !isGenerating ? (
             /* Empty State */
             <div className="bg-white rounded-xl border border-[#e5e3df] p-8 sm:p-12 text-center shadow-xs">
