@@ -48,8 +48,9 @@ export async function generatePinterestSeo(
   onProgress?.(4, 'Synthesizing high-CTR Pinterest Title & natural SEO Description...');
   await new Promise((r) => setTimeout(r, 650));
 
-  // If live custom API is configured, call custom API handler
-  if (config.mode === 'custom_api' && config.apiKey) {
+  // If live API key or Modal proxy tokens are available, call custom API handler
+  const activeApiKey = resolveApiKey(config);
+  if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
     try {
       return await executeCustomPinterestApi(input, config);
     } catch (err) {
@@ -142,7 +143,9 @@ export async function generateArigatoSiteSeo(
   onProgress?.(4, 'Validating strict limits: <199 words (About) and <160 chars (SEO Meta)...');
   await new Promise((r) => setTimeout(r, 650));
 
-  if (config.mode === 'custom_api' && config.apiKey) {
+  // If live API key or Modal proxy tokens are available, call custom API handler
+  const activeApiKey = resolveApiKey(config);
+  if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
     try {
       return await executeCustomSiteApi(input, config);
     } catch (err) {
