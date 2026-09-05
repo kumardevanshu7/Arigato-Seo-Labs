@@ -1,6 +1,6 @@
 import React from 'react';
 import type { SeoCategory } from '../types/seo';
-import { Sliders, KeyRound, Globe, Pin, FileText } from 'lucide-react';
+import { Sliders, KeyRound, Globe, Pin, FileText, Download, WifiOff } from 'lucide-react';
 
 interface HeaderProps {
   activeCategory: SeoCategory;
@@ -10,6 +10,9 @@ interface HeaderProps {
   onOpenExplore: () => void;
   pinterestKwCount: number;
   siteKwCount: number;
+  isInstallable?: boolean;
+  onInstallApp?: () => void;
+  isOnline?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,6 +23,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExplore,
   pinterestKwCount,
   siteKwCount,
+  isInstallable = false,
+  onInstallApp,
+  isOnline = true,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-[#ffffff]/95 backdrop-blur-md border-b border-[#e5e3df]">
@@ -140,6 +146,31 @@ export const Header: React.FC<HeaderProps> = ({
               {activeCategory === 'pinterest' ? pinterestKwCount : siteKwCount}
             </span>
           </button>
+
+          {/* PWA Install Button (Shown when installable) */}
+          {isInstallable && (
+            <button
+              type="button"
+              onClick={onInstallApp}
+              title="Install Arigato SEO as an App (PWA)"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-white bg-[#5645d4] hover:bg-[#4534b3] rounded-md shadow-2xs transition-all cursor-pointer shrink-0"
+            >
+              <Download className="w-3.5 h-3.5 text-white" />
+              <span className="hidden sm:inline">Install App</span>
+              <span className="sm:hidden">App</span>
+            </button>
+          )}
+
+          {/* Offline Status Badge */}
+          {!isOnline && (
+            <div
+              title="You are currently offline. Cached resources remain available."
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[#92400e] bg-[#fef3c7] border border-[#f59e0b] rounded-md shrink-0"
+            >
+              <WifiOff className="w-3 h-3 text-[#b45309]" />
+              <span className="hidden sm:inline">Offline</span>
+            </div>
+          )}
 
           {/* API Setup Button */}
           <button

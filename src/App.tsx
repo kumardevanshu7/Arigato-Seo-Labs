@@ -21,9 +21,13 @@ import { ApiIntegrationModal } from './components/ApiIntegrationModal';
 import { Footer } from './components/Footer';
 import { ChatAssistant } from './components/ChatAssistant';
 import { ArigatoBrandModal, type BrandTab } from './components/ArigatoBrandModal';
+import { usePWA } from './hooks/usePWA';
 
 export const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<SeoCategory>('pinterest');
+
+  // PWA & Service Worker Status
+  const { isInstallable, isInstalled, isOnline, installApp } = usePWA();
 
   // Keywords State
   const [pinterestKeywords, setPinterestKeywords] = useState<KeywordItem[]>(() =>
@@ -192,6 +196,9 @@ export const App: React.FC = () => {
         }}
         pinterestKwCount={activePinterestKwCount}
         siteKwCount={activeSiteKwCount}
+        isInstallable={isInstallable && !isInstalled}
+        onInstallApp={installApp}
+        isOnline={isOnline}
       />
 
       {/* Notion Navy Atmospheric Hero Section */}
