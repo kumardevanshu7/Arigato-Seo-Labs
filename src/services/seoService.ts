@@ -1,5 +1,6 @@
 import type { GenerationInput, PinterestSeoResult, ArigatoSiteSeoResult, ApiConfig, GrabTextResult } from '../types/seo';
 import { getStoredApiConfig } from '../utils/storage';
+import Tesseract from 'tesseract.js';
 
 // Helper to count words accurately
 export const countWords = (text: string): number => {
@@ -581,149 +582,87 @@ Formatting Guidelines:
 
 /**
  * Intelligent Image Text & Keyword Extractor ("Grab Text" engine)
- * Supports 1 to 5+ images simultaneously.
- * Uses Kimi-K3 Vision API if connected, or smart vision-based OCR parser.
+/**
+ * Real-Time Optical Text & Keyword Recognition ("Grab Text" engine)
+ * Powered by Tesseract.js real client-side OCR engine.
+ * Reads exact text, keywords, and phrases directly from image pixels.
  */
 export async function extractTextFromImages(
   images: { dataUrl: string; name: string }[],
   onProgress?: (step: number, msg: string) => void
 ): Promise<GrabTextResult> {
-  const config = getStoredApiConfig();
+  const total = images.length;
+  const rawExtractedParts: string[] = [];
 
-  onProgress?.(1, `Analyzing ${images.length} uploaded image(s) for visual text and keywords...`);
-  await new Promise((r) => setTimeout(r, 600));
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    onProgress?.(1, `Scanning image ${i + 1} of ${total}: Initializing OCR engine...`);
 
-  onProgress?.(2, 'Running optical text recognition & parsing prompt tags...');
-  await new Promise((r) => setTimeout(r, 700));
-
-  onProgress?.(3, 'Structuring unique keywords, cleaning formatting & deduplicating...');
-  await new Promise((r) => setTimeout(r, 500));
-
-  // If Kimi API is connected, execute multimodal extraction
-  if (config.mode === 'custom_api' && config.apiKey) {
     try {
-      const headers = buildAuthHeaders(config);
-      const endpoint = resolveApiUrl(config);
-
-      const contentParts: any[] = [
-        {
-          type: 'text',
-          text: `You are an expert OCR and keyword extraction specialist for prompt engineering and SEO.
-Carefully read, detect, and extract ALL text, keywords, hashtags, prompts, or terminology present across these ${images.length} uploaded images.
-Exclude noisy system UI icons and return a clean array of high-intent keywords and descriptive phrases.`,
+      const { data } = await Tesseract.recognize(img.dataUrl, 'eng', {
+        logger: (m) => {
+          if (m.status === 'recognizing text' && typeof m.progress === 'number') {
+            onProgress?.(
+              2,
+              `Reading text in image ${i + 1}/${total} (${Math.round(m.progress * 100)}%)...`
+            );
+          }
         },
-      ];
-
-      for (const img of images.slice(0, 5)) {
-        contentParts.push({
-          type: 'image_url',
-          image_url: { url: img.dataUrl },
-        });
-      }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: config.model || 'moonshotai/Kimi-K3',
-          messages: [
-            {
-              role: 'system',
-              content: 'Extract all keywords, prompts, and text terms from the provided images. Return ONLY a JSON object with a "keywords" array of clean string items in lower-case English.',
-            },
-            {
-              role: 'user',
-              content: contentParts,
-            },
-          ],
-          temperature: 0.2,
-          max_tokens: 1500,
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'grab_text_result',
-              strict: true,
-              schema: {
-                type: 'object',
-                properties: {
-                  keywords: {
-                    type: 'array',
-                    items: { type: 'string' },
-                  },
-                },
-                required: ['keywords'],
-                additionalProperties: false,
-              },
-            },
-          },
-        }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const raw = data.choices?.[0]?.message?.content || '{}';
-        const parsed = JSON.parse(raw.replace(/```json/g, '').replace(/```/g, '').trim());
-        if (Array.isArray(parsed.keywords) && parsed.keywords.length > 0) {
-          const uniqueClean: string[] = Array.from(
-            new Set(parsed.keywords.map((k: any) => String(k).trim().toLowerCase()).filter(Boolean))
-          );
-          return {
-            allCommaSeparated: uniqueClean.join(', '),
-            items: uniqueClean,
-            totalExtracted: uniqueClean.length,
-          };
+      const extractedText = (data.text || '').trim();
+      if (extractedText) {
+        // Split by lines and commas
+        const lines = extractedText
+          .split(/[\r\n]+/)
+          .map((l) => l.trim())
+          .filter(Boolean);
+
+        for (const line of lines) {
+          if (line.includes(',')) {
+            const parts = line.split(',').map((p) => p.trim()).filter(Boolean);
+            rawExtractedParts.push(...parts);
+          } else {
+            rawExtractedParts.push(line);
+          }
         }
       }
     } catch (err) {
-      console.warn('Multimodal OCR API call failed, falling back to smart extraction:', err);
+      console.warn(`Tesseract OCR error on image ${img.name}:`, err);
     }
   }
 
-  // Smart fallback extraction
-  const extractedList: string[] = [];
-  for (const img of images) {
-    const baseName = img.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-    const tokens = baseName.split(/\s+/).filter((t) => t.length > 2);
-    if (tokens.length > 0) {
-      extractedList.push(tokens.join(' ').toLowerCase());
-      tokens.forEach((t) => {
-        if (!['image', 'screenshot', 'photo', 'img', 'media', 'upload', 'screen'].includes(t.toLowerCase())) {
-          extractedList.push(`${t.toLowerCase()} prompt`);
-        }
-      });
+  onProgress?.(3, 'Structuring unique keywords, cleaning formatting & deduplicating...');
+  await new Promise((r) => setTimeout(r, 400));
+
+  // Clean, normalize and deduplicate extracted terms
+  const uniqueClean: string[] = [];
+  for (const raw of rawExtractedParts) {
+    const cleaned = raw
+      .replace(/[|•·*#_~`]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (cleaned.length >= 2) {
+      const lower = cleaned.toLowerCase();
+      if (!uniqueClean.map((x) => x.toLowerCase()).includes(lower)) {
+        uniqueClean.push(cleaned);
+      }
     }
   }
 
-  const defaultHighIntentPool = [
-    'romantic couple prompt',
-    'realistic couple photo',
-    'candid couple selfie',
-    'gemini couple prompt',
-    'gemini couple prompt instagram',
-    'indian couple prompt for gemini ai',
-    'realistic couple prompt for gemini ai',
-    'couple prompt',
-    'couple photo',
-    'couple aesthetic',
-    'best ai prompt for couples',
-    'smartphone realism',
-    'face lock prompt',
-    'outfit lock prompt',
-    'close up couple selfie',
-    'romantic prompt ideas',
-  ];
-
-  for (const tag of defaultHighIntentPool) {
-    if (!extractedList.includes(tag)) {
-      extractedList.push(tag);
-    }
+  if (uniqueClean.length > 0) {
+    return {
+      allCommaSeparated: uniqueClean.join(', '),
+      items: uniqueClean,
+      totalExtracted: uniqueClean.length,
+    };
   }
 
-  const finalItems = Array.from(new Set(extractedList)).slice(0, 15);
-
+  // Graceful response if no text was detected in pixels
   return {
-    allCommaSeparated: finalItems.join(', '),
-    items: finalItems,
-    totalExtracted: finalItems.length,
+    allCommaSeparated: 'No visible text detected in uploaded image(s). Try uploading a screenshot with clear, readable text or prompt keywords.',
+    items: ['No visible text detected'],
+    totalExtracted: 0,
   };
 }

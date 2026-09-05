@@ -43,3 +43,7 @@ lerna-debug.log*
 Thumbs.db
 ehthumbs.db
 [Dd]esktop.ini
+
+# Tesseract OCR trained models
+*.traineddata
+
