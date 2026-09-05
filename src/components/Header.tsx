@@ -25,17 +25,17 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-40 w-full bg-[#ffffff]/95 backdrop-blur-md border-b border-[#e5e3df]">
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
-        {/* Left: Brand Logo & Wordmark */}
+        {/* Left: Brand Logo & Wordmark (User's Blue Icon) */}
         <button
           onClick={onOpenExplore}
           className="flex items-center gap-2 sm:gap-3 shrink-0 text-left hover:opacity-90 transition-opacity cursor-pointer"
           title="Explore Arigato Labs"
         >
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#0a1530] flex items-center justify-center p-1.5 shadow-sm border border-[#1a2a52]">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white flex items-center justify-center p-0.5 shadow-xs border border-[#e5e3df] overflow-hidden">
             <img
-              src="/arigato-single-logo.png"
-              alt="Arigato Labs"
-              className="w-full h-full object-contain"
+              src="/apple-touch-icon.png"
+              alt="Arigato SEO Labs"
+              className="w-full h-full object-contain rounded-md"
             />
           </div>
           <div className="flex flex-col">

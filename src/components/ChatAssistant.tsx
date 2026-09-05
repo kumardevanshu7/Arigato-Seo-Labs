@@ -3,7 +3,6 @@ import { sendChatAssistantMessage } from '../services/seoService';
 import {
   X,
   Send,
-  Bot,
   Trash2,
   Code2,
   ChevronDown,
@@ -194,7 +193,11 @@ export const ChatAssistant: React.FC = () => {
           className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-[#5645d4] hover:bg-[#4534b3] text-white rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 active:scale-95 cursor-pointer border border-[#7b3ff2]/40"
         >
           <div className="relative">
-            <Bot className="w-4 h-4 text-[#f5d75e]" />
+            <img
+              src="/apple-touch-icon.png"
+              alt="Arigato Assistant"
+              className="w-5 h-5 rounded-full object-contain bg-white p-0.5"
+            />
             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#1aae39] animate-pulse"></span>
           </div>
           <span className="text-xs font-semibold tracking-wide hidden xs:inline">
@@ -212,8 +215,12 @@ export const ChatAssistant: React.FC = () => {
           {/* Header */}
           <div className="p-3.5 sm:p-4 bg-[#0a1530] text-white border-b border-[#1a2a52] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#5645d4] flex items-center justify-center text-white">
-                <Bot className="w-4 h-4 text-[#f5d75e]" />
+              <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center p-0.5 overflow-hidden shadow-xs border border-white/20">
+                <img
+                  src="/apple-touch-icon.png"
+                  alt="Assistant"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">

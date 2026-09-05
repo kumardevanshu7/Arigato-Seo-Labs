@@ -459,9 +459,11 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
 
                     <div className="flex items-center justify-between pt-2 border-t border-[#f6f5f4]">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-full bg-[#0a1530] text-white flex items-center justify-center text-[10px] font-bold">
-                          A
-                        </div>
+                        <img
+                          src="/apple-touch-icon.png"
+                          alt="Arigato Labs"
+                          className="w-5 h-5 rounded-full object-contain shadow-2xs border border-[#e5e3df]"
+                        />
                         <span className="text-[11px] font-medium text-[#37352f]">
                           Arigato Labs
                         </span>

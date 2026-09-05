@@ -16,11 +16,11 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
             onClick={() => onOpenLegal('explore')}
             className="flex items-center gap-2.5 text-left hover:opacity-90 transition-opacity cursor-pointer"
           >
-            <div className="w-7 h-7 rounded-lg bg-[#0a1530] flex items-center justify-center p-1 border border-[#1a2a52]">
+            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center p-0.5 border border-[#e5e3df] overflow-hidden shadow-xs">
               <img
-                src="/arigato-single-logo.png"
-                alt="Arigato Labs"
-                className="w-full h-full object-contain"
+                src="/apple-touch-icon.png"
+                alt="Arigato SEO Labs"
+                className="w-full h-full object-contain rounded-xs"
               />
             </div>
             <span className="font-semibold text-sm text-[#1a1a1a]">Arigato Labs — SEO Studio</span>

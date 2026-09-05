@@ -512,9 +512,11 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                 <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#e5e3df] shadow-xs max-w-2xl">
                   {/* Google Breadcrumb */}
                   <div className="flex items-center gap-2 mb-1 truncate">
-                    <div className="w-4 h-4 rounded-full bg-[#0a1530] text-white text-[9px] flex items-center justify-center font-bold shrink-0">
-                      A
-                    </div>
+                    <img
+                      src="/favicon-32x32.png"
+                      alt="favicon"
+                      className="w-4 h-4 rounded-full object-contain shrink-0 border border-[#e5e3df]"
+                    />
                     <span className="text-xs text-[#202124] font-medium shrink-0">Arigato Labs</span>
                     <span className="text-xs text-[#5f6368] truncate">https://arigatolabs.com › prompts</span>
                   </div>
