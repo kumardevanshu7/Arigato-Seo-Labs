@@ -29,6 +29,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
   const [prompt, setPrompt] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string>('');
+  const [pinterestFormat, setPinterestFormat] = useState<'with_link' | 'search_steps'>('with_link');
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
@@ -60,6 +61,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
           imageFileName: imageFileName || undefined,
           activeKeywords,
           pinnedKeywords,
+          pinterestFormat,
         },
         (step, msg) => {
           setProgressStep(step);
@@ -135,6 +137,55 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                 }}
                 isScanning={isGenerating}
               />
+            </div>
+
+            {/* Pinterest Strategy & Output Structure Selector */}
+            <div className="mb-4 sm:mb-5">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-[#37352f]">
+                  Pinterest Pin Strategy & Structure
+                </label>
+                <span className="text-[10px] font-semibold text-[#e60023]">
+                  {pinterestFormat === 'with_link' ? '🔗 Outbound Link' : '🔍 Google Discovery'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 p-1 bg-[#f4f3f0] rounded-lg border border-[#e5e3df]">
+                <button
+                  type="button"
+                  onClick={() => setPinterestFormat('with_link')}
+                  className={`flex flex-col items-start p-2 sm:p-2.5 rounded-md transition-all text-left cursor-pointer ${
+                    pinterestFormat === 'with_link'
+                      ? 'bg-white shadow-xs border border-[#e60023]/30 text-[#1a1a1a]'
+                      : 'text-[#787671] hover:text-[#1a1a1a] hover:bg-white/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`w-2 h-2 rounded-full ${pinterestFormat === 'with_link' ? 'bg-[#e60023]' : 'bg-gray-300'}`} />
+                    <span className="text-xs font-semibold">1. With Website Link</span>
+                  </div>
+                  <span className="text-[10px] text-[#787671] line-clamp-1">
+                    Adds &ldquo;| Click Visit Site for Prompt&rdquo;
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPinterestFormat('search_steps')}
+                  className={`flex flex-col items-start p-2 sm:p-2.5 rounded-md transition-all text-left cursor-pointer ${
+                    pinterestFormat === 'search_steps'
+                      ? 'bg-white shadow-xs border border-[#5645d4]/30 text-[#1a1a1a]'
+                      : 'text-[#787671] hover:text-[#1a1a1a] hover:bg-white/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`w-2 h-2 rounded-full ${pinterestFormat === 'search_steps' ? 'bg-[#5645d4]' : 'bg-gray-300'}`} />
+                    <span className="text-xs font-semibold">2. Search Steps (No Link)</span>
+                  </div>
+                  <span className="text-[10px] text-[#787671] line-clamp-1">
+                    Adds Google &ldquo;Arigato Devan&rdquo; steps
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* Prompt / Topic Text Area */}
@@ -279,6 +330,9 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                   <span className="w-2.5 h-2.5 rounded-full bg-[#1aae39] shrink-0"></span>
                   <span className="text-xs font-semibold text-[#1a1a1a] truncate">
                     Pinterest SEO Generated
+                  </span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#fde0ec] text-[#e60023] shrink-0">
+                    {pinterestFormat === 'with_link' ? '🔗 With Link' : '🔍 Search Steps'}
                   </span>
                 </div>
                 <button
@@ -453,7 +507,17 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                     <h4 className="font-semibold text-xs text-[#1a1a1a] line-clamp-2 mb-1 leading-snug">
                       {result.title}
                     </h4>
-                    <p className="text-[11px] text-[#787671] line-clamp-2 sm:line-clamp-3 leading-relaxed mb-2">
+
+                    {/* Native Visit Site Button (Matches Real Pinterest Link Pin) */}
+                    {pinterestFormat === 'with_link' && (
+                      <div className="my-2">
+                        <div className="w-full py-1.5 px-3 bg-[#e9e9e9] text-[#111111] font-semibold text-xs rounded-full text-center select-none shadow-2xs">
+                          Visit site
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-[11px] text-[#787671] line-clamp-3 sm:line-clamp-4 leading-relaxed mb-2">
                       {result.description}
                     </p>
 

@@ -47,6 +47,7 @@ export interface GenerationInput {
   imageFileName?: string;
   activeKeywords: string[];
   pinnedKeywords?: string[]; // 📌 Mandatory keywords that MUST appear in descriptions
+  pinterestFormat?: 'with_link' | 'search_steps'; // Dual-mode for Pinterest: With Link CTA vs Google Search Steps
 }
 
 export interface GenerationState {
