@@ -1,6 +1,6 @@
 import React from 'react';
 import type { SeoCategory } from '../types/seo';
-import { Sparkles, Pin, Globe, ArrowDown, CheckCircle2, ShieldCheck, Zap } from 'lucide-react';
+import { Sparkles, Pin, Globe, ArrowDown, CheckCircle2, ShieldCheck, Zap, FileText } from 'lucide-react';
 
 interface HeroBannerProps {
   activeCategory: SeoCategory;
@@ -42,35 +42,48 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
       <div className="relative max-w-5xl mx-auto text-center">
         {/* Mode Indicator Badge */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1a2a52] border border-[#2a3c6e] text-[11px] sm:text-xs font-semibold text-white mb-4 sm:mb-6 shadow-sm">
-          {isPinterest ? (
+          {activeCategory === 'pinterest' ? (
             <>
               <span className="w-2 h-2 rounded-full bg-[#e60023] animate-ping shrink-0"></span>
               <Pin className="w-3 h-3 text-[#ff64c8] shrink-0" />
               <span className="tracking-wide">PINTEREST ALGORITHM ENGINE</span>
             </>
-          ) : (
+          ) : activeCategory === 'site' ? (
             <>
               <span className="w-2 h-2 rounded-full bg-[#5645d4] animate-ping shrink-0"></span>
               <Globe className="w-3 h-3 text-[#d6b6f6] shrink-0" />
               <span className="tracking-wide">ARIGATO SITE SERP OPTIMIZER</span>
+            </>
+          ) : (
+            <>
+              <span className="w-2 h-2 rounded-full bg-[#2a9d99] animate-ping shrink-0"></span>
+              <FileText className="w-3 h-3 text-[#2a9d99] shrink-0" />
+              <span className="tracking-wide">MULTI-IMAGE TEXT & KEYWORD EXTRACTOR</span>
             </>
           )}
         </div>
 
         {/* Hero Display Headline */}
         <h1 className="text-3xl sm:text-5xl lg:text-7xl tracking-tight text-white mb-4 sm:mb-6 font-semibold leading-[1.08]">
-          {isPinterest ? (
+          {activeCategory === 'pinterest' ? (
             <>
               Scan visual pins. <br />
               <span className="bg-gradient-to-r from-[#ff64c8] via-[#f5d75e] to-[#7b3ff2] bg-clip-text text-transparent">
                 Command search rankings.
               </span>
             </>
-          ) : (
+          ) : activeCategory === 'site' ? (
             <>
               Engineered prompt SEO. <br />
               <span className="bg-gradient-to-r from-[#d6b6f6] via-[#2a9d99] to-[#f5d75e] bg-clip-text text-transparent">
                 Rank on page one of Google.
+              </span>
+            </>
+          ) : (
+            <>
+              Drop multiple pictures. <br />
+              <span className="bg-gradient-to-r from-[#2a9d99] via-[#4ade80] to-[#f5d75e] bg-clip-text text-transparent">
+                Extract keywords in 2 ways.
               </span>
             </>
           )}
@@ -78,9 +91,11 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
 
         {/* Hero Subtitle */}
         <p className="text-xs sm:text-base text-[#a4a097] max-w-2xl mx-auto mb-6 sm:mb-8 font-normal leading-relaxed px-2">
-          {isPinterest
+          {activeCategory === 'pinterest'
             ? 'Feed your image and art prompt. Our neural scanner analyzes visual aesthetics and injects your custom Pinterest SEO keywords into click-worthy titles, descriptions, and viral tags.'
-            : 'Generate strict SEO metadata for your prompt store: "About this prompt" strictly under 199 words, Google Meta Description under 160 characters, and exactly 6 to 9 targeted search keywords.'}
+            : activeCategory === 'site'
+            ? 'Generate strict SEO metadata for your prompt store: "About this prompt" strictly under 199 words, Google Meta Description under 160 characters, and exactly 6 to 9 targeted search keywords.'
+            : 'Upload 1 to 5+ pictures or screenshots to automatically extract all keywords and prompts. Formatted in a unified comma-separated block and individual 1-click copy blocks.'}
         </p>
 
         {/* Action Buttons - Full-width on mobile for easy tapping */}

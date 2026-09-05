@@ -1,4 +1,10 @@
-export type SeoCategory = 'pinterest' | 'site';
+export type SeoCategory = 'pinterest' | 'site' | 'grab-text';
+
+export interface GrabTextResult {
+  allCommaSeparated: string;
+  items: string[];
+  totalExtracted: number;
+}
 
 export type KeywordCategory = 'primary' | 'secondary' | 'trending' | 'niche' | 'brand';
 

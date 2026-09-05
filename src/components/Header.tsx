@@ -1,6 +1,6 @@
 import React from 'react';
 import type { SeoCategory } from '../types/seo';
-import { Sliders, KeyRound, Globe, Pin } from 'lucide-react';
+import { Sliders, KeyRound, Globe, Pin, FileText } from 'lucide-react';
 
 interface HeaderProps {
   activeCategory: SeoCategory;
@@ -92,6 +92,24 @@ export const Header: React.FC<HeaderProps> = ({
               {siteKwCount}
             </span>
           </button>
+          <button
+            onClick={() => onSelectCategory('grab-text')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
+              activeCategory === 'grab-text'
+                ? 'bg-[#2a9d99] text-white shadow-sm'
+                : 'text-[#5d5b54] hover:text-[#1a1a1a] hover:bg-white/60'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Grab Text</span>
+            <span
+              className={`text-[9px] uppercase tracking-wide font-bold px-1.5 py-0.2 rounded-full ${
+                activeCategory === 'grab-text' ? 'bg-white/20 text-white' : 'bg-[#e5e3df] text-[#5d5b54]'
+              }`}
+            >
+              OCR
+            </span>
+          </button>
         </nav>
 
         {/* Right Tools: Explore, Keywords & API Connect */}
@@ -137,43 +155,41 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Mobile Dedicated Segmented Full-Width Switcher (Visible on mobile only <sm) */}
       <div className="sm:hidden px-3 pb-2.5 pt-0.5 bg-white border-t border-[#f0eeec]">
-        <div className="grid grid-cols-2 gap-1 p-1 bg-[#f6f5f4] rounded-lg border border-[#e5e3df]">
+        <div className="grid grid-cols-3 gap-1 p-1 bg-[#f6f5f4] rounded-lg border border-[#e5e3df]">
           <button
             onClick={() => onSelectCategory('pinterest')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1 py-2 px-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
               activeCategory === 'pinterest'
                 ? 'bg-[#e60023] text-white shadow-xs'
                 : 'text-[#5d5b54] hover:bg-white/50'
             }`}
           >
-            <Pin className={`w-3.5 h-3.5 ${activeCategory === 'pinterest' ? 'fill-white' : ''}`} />
+            <Pin className={`w-3 h-3 ${activeCategory === 'pinterest' ? 'fill-white' : ''}`} />
             <span>Pinterest</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                activeCategory === 'pinterest' ? 'bg-white/25 text-white' : 'bg-[#e5e3df] text-[#5d5b54]'
-              }`}
-            >
-              {pinterestKwCount}
-            </span>
           </button>
 
           <button
             onClick={() => onSelectCategory('site')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1 py-2 px-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
               activeCategory === 'site'
                 ? 'bg-[#5645d4] text-white shadow-xs'
                 : 'text-[#5d5b54] hover:bg-white/50'
             }`}
           >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Arigato Site</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                activeCategory === 'site' ? 'bg-white/25 text-white' : 'bg-[#e5e3df] text-[#5d5b54]'
-              }`}
-            >
-              {siteKwCount}
-            </span>
+            <Globe className="w-3 h-3" />
+            <span>Site SEO</span>
+          </button>
+
+          <button
+            onClick={() => onSelectCategory('grab-text')}
+            className={`flex items-center justify-center gap-1 py-2 px-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+              activeCategory === 'grab-text'
+                ? 'bg-[#2a9d99] text-white shadow-xs'
+                : 'text-[#5d5b54] hover:bg-white/50'
+            }`}
+          >
+            <FileText className="w-3 h-3" />
+            <span>Grab Text</span>
           </button>
         </div>
       </div>

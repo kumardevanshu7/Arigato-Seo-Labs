@@ -15,6 +15,7 @@ import { Header } from './components/Header';
 import { HeroBanner } from './components/HeroBanner';
 import { PinterestSeoView } from './components/PinterestSeoView';
 import { ArigatoSiteSeoView } from './components/ArigatoSiteSeoView';
+import { GrabTextView } from './components/GrabTextView';
 import { KeywordsDrawer } from './components/KeywordsDrawer';
 import { ApiIntegrationModal } from './components/ApiIntegrationModal';
 import { Footer } from './components/Footer';
@@ -144,6 +145,36 @@ export const App: React.FC = () => {
     studioRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleAddKeywordsFromGrab = (newKeywords: string[]) => {
+    const targetCat = activeCategory === 'pinterest' ? 'pinterest' : 'site';
+    const currentList = targetCat === 'pinterest' ? pinterestKeywords : siteKeywords;
+    const existingTexts = new Set(currentList.map((k) => k.text.toLowerCase()));
+
+    const additions: KeywordItem[] = [];
+    newKeywords.forEach((kw) => {
+      const clean = kw.trim();
+      if (clean && !existingTexts.has(clean.toLowerCase())) {
+        existingTexts.add(clean.toLowerCase());
+        additions.push({
+          id: `grab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          text: clean,
+          category: 'trending',
+          active: true,
+          isPinned: false,
+        });
+      }
+    });
+
+    if (additions.length > 0) {
+      const updated = [...currentList, ...additions];
+      if (targetCat === 'pinterest') {
+        handleUpdatePinterestKeywords(updated);
+      } else {
+        handleUpdateSiteKeywords(updated);
+      }
+    }
+  };
+
   const activePinterestKwCount = pinterestKeywords.filter((k) => k.active).length;
   const activeSiteKwCount = siteKeywords.filter((k) => k.active).length;
 
@@ -171,16 +202,21 @@ export const App: React.FC = () => {
       />
 
       {/* Main Studio Work Area */}
-      <main ref={studioRef} className="flex-1 w-full bg-[#fafaf9]">
+      <main ref={studioRef} className="flex-1 w-full bg-[#fafaf9] py-6 sm:py-8 px-3 sm:px-6 lg:px-8">
         {activeCategory === 'pinterest' ? (
           <PinterestSeoView
             pinterestKeywords={pinterestKeywords}
             onOpenKeywords={() => setIsKeywordsOpen(true)}
           />
-        ) : (
+        ) : activeCategory === 'site' ? (
           <ArigatoSiteSeoView
             siteKeywords={siteKeywords}
             onOpenKeywords={() => setIsKeywordsOpen(true)}
+          />
+        ) : (
+          <GrabTextView
+            onAddKeywordsToFirestore={handleAddKeywordsFromGrab}
+            onOpenKeywordsDrawer={() => setIsKeywordsOpen(true)}
           />
         )}
       </main>
