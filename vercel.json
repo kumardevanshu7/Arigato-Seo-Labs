@@ -1,12 +1,12 @@
-﻿{
-  "framework": "vite",
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/modal-api/(.*)",
-      "destination": "https://devansh-grow--ep-kimi-k3-server.us-west.modal.direct/v1/$1"
+      "source": "/modal-api/:path*",
+      "destination": "https://devansh-grow--ep-kimi-k3-server.us-west.modal.direct/v1/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
