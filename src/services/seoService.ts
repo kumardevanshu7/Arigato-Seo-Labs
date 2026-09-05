@@ -24,6 +24,184 @@ export const enforceCharLimit = (text: string, maxChars: number): string => {
 };
 
 /**
+ * Robust JSON extractor: extracts JSON object safely from raw LLM responses.
+ * Gracefully handles <think>...</think> reasoning tags, markdown fences,
+ * leading/trailing commentary, or empty outputs.
+ */
+export function extractSafeJsonObject(rawText: string): any {
+  if (!rawText || typeof rawText !== 'string') return {};
+
+  // Strip <think>...</think> or <thought>...</thought> reasoning tags
+  let clean = rawText
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+    .trim();
+
+  // Strip markdown code fences
+  clean = clean.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+
+  // Locate the outermost JSON object braces { ... }
+  const firstBrace = clean.indexOf('{');
+  const lastBrace = clean.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    clean = clean.substring(firstBrace, lastBrace + 1);
+  }
+
+  try {
+    return JSON.parse(clean);
+  } catch (err) {
+    console.warn('[extractSafeJsonObject] JSON.parse failed on cleaned text:', clean.slice(0, 120), err);
+    return {};
+  }
+}
+
+/**
+ * Smart Dynamic Synthesis for "About this prompt" (Strictly < 199 words, 4 cohesive paragraphs)
+ * Adheres strictly to the 10 real master examples:
+ * Para 1: Candid pose, scene, framing (e.g. 3-frame collage, stacked selfies, cafe, balcony, elevator)
+ * Para 2: Strict facial identity preservation & anti-AI smoothing principles
+ * Para 3: Exact outfits, fabrics, accessories from prompt/reference
+ * Para 4: Smartphone camera realism, natural lighting, everyday romance
+ */
+export function generateSmartAboutPrompt(input: GenerationInput): string {
+  const promptLower = (input.prompt || '').toLowerCase();
+
+  // Paragraph 1: Scene & Candid Pose
+  let p1 = '';
+  const isStackedCollage = /stack|collage|three|3-frame|grid|strip|series|multi-frame/i.test(promptLower);
+  const isCoveringEyes = /cover.*eye|blindfold|hand.*over.*eye/i.test(promptLower);
+  const isCheekSquish = /cheek|squish|pinch|holding.*cheek/i.test(promptLower);
+  const isCafe = /cafe|coffee|table|restaurant|indoor.*table/i.test(promptLower);
+  const isElevator = /elevator|lift|mirror/i.test(promptLower);
+  const isBalcony = /balcony|terrace|rooftop|outdoors/i.test(promptLower);
+
+  if (isStackedCollage && isCoveringEyes) {
+    p1 = 'Create a realistic candid couple photography prompt featuring a young couple captured in an intimate, spontaneous vertical 3-frame selfie series. In playful sequence, the woman stands close behind her partner, tenderly covering his eyes with both hands while he laughs warmly, capturing genuine unscripted affection and playful chemistry.';
+  } else if (isStackedCollage) {
+    p1 = 'Create a realistic candid couple photography prompt featuring a young couple captured in an intimate, spontaneous vertical 3-frame selfie series. Both subjects share natural closeness with genuine eye contact, candid smiles, and playful unposed chemistry across each frame rather than a staged look.';
+  } else if (isCoveringEyes) {
+    p1 = "Create a realistic candid couple photography prompt featuring a young couple in an intimate, spontaneous moment. The woman playfully covers the man's eyes with both hands from behind while he smiles warmly, creating a sweet, unposed interaction full of romantic warmth and genuine connection.";
+  } else if (isCheekSquish) {
+    p1 = "Create a realistic candid couple photography prompt featuring a young couple in a playful, affectionate moment. One partner tenderly holds and squishes the other's cheek with gentle fingers, sharing genuine smiles and natural, unscripted chemistry.";
+  } else if (isCafe) {
+    p1 = 'Create a realistic candid couple photography prompt set in a cozy cafe. The couple sits close together across a wooden table with warm beverages, sharing quiet laughter and genuine eye contact in an unscripted, affectionate moment.';
+  } else if (isElevator) {
+    p1 = 'Create a realistic candid couple photography prompt inside a modern wooden elevator. The couple stands close together, capturing an impromptu mirror selfie with natural closeness and authentic romantic chemistry.';
+  } else if (isBalcony) {
+    p1 = 'Create a realistic candid couple photography prompt set on a serene open balcony. The couple leans close against the railing in the soft morning breeze, sharing quiet laughter and genuine affectionate chemistry.';
+  } else {
+    p1 = 'Create a realistic candid couple photography prompt featuring a young couple in an intimate, spontaneous moment. Both subjects maintain natural closeness with genuine eye contact, affectionate smiles, and playful unposed chemistry rather than a staged look.';
+  }
+
+  // Paragraph 2: Strict Facial Identity Preservation (Master Paragraph)
+  const p2 = 'Strict facial identity preservation is the highest priority. Preserve both reference identities with strict accuracy, including facial structure, proportions, eyes, nose, lips, skin tone, natural asymmetry, hairline, hairstyle, and authentic skin texture. Keep any reference glasses unchanged. Avoid beautification, skin smoothing, artificial glow, cinematic grading, or polished AI aesthetics.';
+
+  // Paragraph 3: Exact Outfits & Accessories
+  let p3 = '';
+  const hasNaruto = /naruto/i.test(promptLower);
+  const hasPurple = /purple/i.test(promptLower);
+  const hasKurta = /kurta/i.test(promptLower);
+  const hasSaree = /saree|sari/i.test(promptLower);
+  const hasGraphicTee = /graphic|t-shirt|tee/i.test(promptLower);
+
+  if (hasNaruto || (hasPurple && hasGraphicTee)) {
+    p3 = 'Clothing and styling remain authentic to the reference subjects, featuring a casual black Naruto graphic tee and a textured purple top, capturing natural fabric weaves, soft folds, and everyday details with zero synthetic perfection.';
+  } else if (hasKurta) {
+    p3 = 'Clothing and styling feature authentic textured kurtas with realistic fabric weaves, natural stitching, and subtle creases, complemented by understated everyday accessories.';
+  } else if (hasSaree) {
+    p3 = 'Clothing features an elegant traditional saree with authentic fabric drape, detailed borders, and natural folds, complemented by traditional jewelry and delicate accessories.';
+  } else {
+    p3 = 'Clothing and styling remain authentic to the reference subjects, capturing natural fabric weaves, everyday creases, and subtle accessories with zero synthetic perfection.';
+  }
+
+  // Paragraph 4: Lighting, Camera & Smartphone Realism (Master Paragraph)
+  const p4 = 'Soft natural ambient lighting, subtle exposure variations, mobile-camera sensor softness, authentic skin pores, slight flyaway hair, and imperfect handheld framing complete the authentic smartphone look. It is perfect for creating a special memorable photo to share with your boyfriend or girlfriend, a sweet and memorable way to share everyday romance.';
+
+  const fullPrompt = `${p1}\n\n${p2}\n\n${p3}\n\n${p4}`;
+  return enforceWordLimit(fullPrompt, 199);
+}
+
+/**
+ * Smart synthesis generator for "SEO Meta Description" (Strictly < 160 chars)
+ */
+export function generateSmartSeoDescription(input: GenerationInput): string {
+  const pinnedKws = input.pinnedKeywords || [];
+  let primaryHook = '';
+
+  if (pinnedKws.length >= 2) {
+    primaryHook = `${pinnedKws[0]} & ${pinnedKws[1]}`;
+  } else if (pinnedKws.length === 1) {
+    primaryHook = pinnedKws[0];
+  } else if (input.activeKeywords && input.activeKeywords.length > 0) {
+    primaryHook = input.activeKeywords[0];
+  } else {
+    primaryHook = 'realistic couple prompt';
+  }
+
+  let desc = `Realistic couple AI prompt for ${primaryHook}, strict facial identity preservation, warm natural lighting, and candid smartphone realism.`;
+  if (desc.length > 160) {
+    desc = `Couple AI prompt with ${primaryHook}, strict face identity, natural lighting, and candid smartphone realism.`;
+  }
+  if (desc.length > 160) {
+    desc = enforceCharLimit(desc, 160);
+  }
+  return desc;
+}
+
+/**
+ * Smart synthesis generator for "SEO Keywords" (Strictly 6 to 9 items)
+ */
+export function generateSmartKeywords(input: GenerationInput): string[] {
+  const pinnedKws = input.pinnedKeywords || [];
+  const otherKws = (input.activeKeywords || []).filter((k) => !pinnedKws.includes(k));
+
+  const result: string[] = [];
+
+  // 1. Mandatory Pinned Keywords always first
+  for (const kw of pinnedKws) {
+    const clean = kw.trim().toLowerCase();
+    if (clean && !result.includes(clean)) {
+      result.push(clean);
+    }
+  }
+
+  // 2. Add active contextual keywords
+  for (const kw of otherKws) {
+    const clean = kw.trim().toLowerCase();
+    if (clean && !result.includes(clean) && result.length < 6) {
+      result.push(clean);
+    }
+  }
+
+  // 3. High-intent couple prompt search queries from master pool
+  const masterPool = [
+    'gemini couple prompt',
+    'gemini couple prompt instagram',
+    'realistic couple prompt for gemini ai',
+    'couple prompt',
+    'couple photo',
+    'couple aesthetic',
+    'best ai prompt for couples',
+    'romantic prompt ideas',
+    'candid couple photo',
+    'smartphone couple photo',
+  ];
+
+  for (const tag of masterPool) {
+    if (!result.includes(tag) && result.length < 9) {
+      result.push(tag);
+    }
+  }
+
+  // Ensure count is strictly between 6 and 9
+  let finalKws = result.slice(0, 9);
+  if (finalKws.length < 6) {
+    finalKws.push('couple pictures', 'romantic couple ai prompts');
+  }
+  return finalKws.slice(0, 9);
+}
+
+/**
  * Intelligent generator for Pinterest SEO
  */
 export async function generatePinterestSeo(
@@ -52,7 +230,19 @@ export async function generatePinterestSeo(
   const activeApiKey = resolveApiKey(config);
   if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
     try {
-      return await executeCustomPinterestApi(input, config);
+      const pinResult = await executeCustomPinterestApi(input, config);
+      if (
+        pinResult &&
+        pinResult.title &&
+        pinResult.title.trim().length > 5 &&
+        pinResult.description &&
+        pinResult.description.trim().length > 20 &&
+        pinResult.tags &&
+        pinResult.tags.length >= 6
+      ) {
+        return pinResult;
+      }
+      console.warn('[Pinterest SEO] Custom API returned empty or insufficient fields, falling back to smart engine');
     } catch (err) {
       console.warn('Custom API execution failed, falling back to smart engine:', err);
     }
@@ -147,93 +337,38 @@ export async function generateArigatoSiteSeo(
   const activeApiKey = resolveApiKey(config);
   if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
     try {
-      return await executeCustomSiteApi(input, config);
+      const liveResult = await executeCustomSiteApi(input, config);
+      if (
+        liveResult &&
+        liveResult.aboutPrompt &&
+        liveResult.aboutPrompt.trim().length > 30 &&
+        liveResult.seoDescription &&
+        liveResult.seoDescription.trim().length > 10 &&
+        liveResult.keywords &&
+        liveResult.keywords.length >= 6
+      ) {
+        return liveResult;
+      }
+      console.warn('[Site SEO] Custom API returned empty or insufficient output, falling back to smart engine');
     } catch (err) {
       console.warn('Custom API execution failed, falling back to smart engine:', err);
     }
   }
 
-  const pinnedKws = input.pinnedKeywords || [];
-  const otherKws = input.activeKeywords.filter((k) => !pinnedKws.includes(k));
-  const combinedKws = Array.from(new Set([...pinnedKws, ...otherKws]));
-
-  // 1. Generate "About this prompt" (Strictly <= 199 words) — Built from the 10 Real Master Examples
-  const p1 = `Create a realistic candid couple photography prompt featuring a young couple in an intimate, spontaneous moment. Both subjects maintain natural closeness with genuine eye contact, affectionate smiles, and playful unposed chemistry rather than a staged look.`;
-  
-  const p2 = `Strict facial identity preservation is the highest priority. Preserve both reference identities with strict accuracy, including facial structure, proportions, eyes, nose, lips, skin tone, natural asymmetry, hairline, hairstyle, and authentic skin texture. Keep any reference glasses unchanged. Avoid beautification, skin smoothing, artificial glow, cinematic grading, or polished AI aesthetics.`;
-  
-  const p3 = `Clothing and styling should remain authentic to the reference, capturing natural fabric weaves, folds, and accessories with zero synthetic perfection.`;
-  
-  const p4 = `Soft natural lighting, subtle exposure variations, mobile-camera softness, realistic pores, and imperfect handheld framing complete the authentic smartphone look. It is perfect for creating a special memorable photo to share with your boyfriend or girlfriend.`;
-
-  let aboutRaw = `${p1}\n\n${p2}\n\n${p3}\n\n${p4}`;
-  let aboutPrompt = enforceWordLimit(aboutRaw, 199);
-  let wordCount = countWords(aboutPrompt);
-  if (wordCount > 199) {
-    aboutPrompt = enforceWordLimit(aboutPrompt, 190);
-    wordCount = countWords(aboutPrompt);
-  }
-
-  // 2. Generate "SEO Description" (Strictly <= 160 characters)
-  // Target: 125 to 155 characters for peak Google Meta CTR
-  const topPinned = pinnedKws.length > 0 ? pinnedKws.slice(0, 2).join(' and ') : 'intimate pose';
-  let seoDescCandidate = `Create a realistic couple AI prompt featuring ${topPinned}, strict face identity, warm natural lighting, real skin texture, and smartphone realism.`;
-  if (seoDescCandidate.length > 160) {
-    seoDescCandidate = `Realistic couple AI prompt with ${topPinned}, strict face identity, natural lighting, and candid smartphone realism.`;
-  }
-  const seoDescription = enforceCharLimit(seoDescCandidate, 160);
+  // Fallback to Smart Dynamic Generator based on the 10 Master Examples
+  const aboutPrompt = generateSmartAboutPrompt(input);
+  const wordCount = countWords(aboutPrompt);
+  const seoDescription = generateSmartSeoDescription(input);
   const charCount = seoDescription.length;
-
-  // 3. Generate "SEO Keywords" (Strictly between 6 to 9 keywords)
-  const derivedKeywords: string[] = [];
-  // Pinned keywords must strictly be first
-  pinnedKws.forEach((k) => {
-    const clean = k.trim().toLowerCase();
-    if (!derivedKeywords.includes(clean)) derivedKeywords.push(clean);
-  });
-
-  // Add active configured keywords
-  otherKws.forEach((k) => {
-    const clean = k.trim().toLowerCase();
-    if (!derivedKeywords.includes(clean) && derivedKeywords.length < 5) {
-      derivedKeywords.push(clean);
-    }
-  });
-
-  // Add master high-intent search tags from the 10 real examples
-  const masterPool = [
-    'gemini couple prompt',
-    'gemini couple prompt instagram',
-    'realistic couple prompt for gemini ai',
-    'couple prompt',
-    'couple photo',
-    'couple aesthetic',
-    'romantic prompt ideas',
-    'best ai prompt for couples',
-    'candid couple photo',
-    'smartphone couple photo',
-  ];
-
-  for (const tag of masterPool) {
-    if (!derivedKeywords.includes(tag) && derivedKeywords.length < 9) {
-      derivedKeywords.push(tag);
-    }
-  }
-
-  // Ensure count is strictly between 6 and 9
-  let finalKeywords = derivedKeywords.slice(0, 8);
-  if (finalKeywords.length < 6) {
-    finalKeywords.push('couple pictures', 'romantic couple ai prompts');
-  }
-  finalKeywords = finalKeywords.slice(0, 9);
+  const keywords = generateSmartKeywords(input);
 
   return {
     aboutPrompt,
     wordCount,
     seoDescription,
     charCount,
-    keywords: finalKeywords,
-    keywordsMatched: combinedKws.slice(0, 4),
+    keywords,
+    keywordsMatched: (input.pinnedKeywords || []).concat(input.activeKeywords).slice(0, 4),
     siteMetaTitle: `Realistic Couple AI Prompt — Arigato Labs`,
   };
 }
@@ -283,63 +418,75 @@ async function executeCustomPinterestApi(input: GenerationInput, config: ApiConf
   const headers = buildAuthHeaders(config);
   const endpoint = resolveApiUrl(config);
 
-  const messages: any[] = [
-    {
-      role: 'system',
-      content: `You are an elite Pinterest SEO expert for Arigato Labs.
-The user provides an art prompt and optional image.
-LANGUAGE & SEO RULES:
-- All output MUST be written in clear, simple, and high-CTR English optimized for Pinterest search discovery and viral repins.
+  const systemContent = `You are an elite Pinterest SEO expert for Arigato Labs.
+Analyze the user's prompt and creative details to generate a high-converting Pinterest SEO pin package.
+
 MANDATORY RULES:
-1. PINNED KEYWORDS (MANDATORY): Any keyword listed under PINNED KEYWORDS MUST be woven naturally into the pin description!
-2. PIN TITLE: Catchy, high-CTR, keyword-rich (40 to 80 characters) in simple English.
-3. DESCRIPTION: Engaging Pinterest description in simple English incorporating all PINNED KEYWORDS naturally with a clear call to save/repin.
-4. TAGS: Array of 8 to 10 viral search tags starting with #.
+1. PIN TITLE: Catchy, high-CTR, keyword-rich (40 to 80 characters) in clear English.
+2. DESCRIPTION: Engaging Pinterest description in simple, persuasive English naturally incorporating ALL PINNED KEYWORDS with an enthusiastic call to save/repin.
+3. TAGS: Array of 8 to 10 viral search tags starting with #.
+4. RECOMMENDED BOARD: A relevant Pinterest board name.
 
-PINNED KEYWORDS (MANDATORY): ${input.pinnedKeywords?.join(', ') || 'None'}
-ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.join(', ')}`,
-    },
-    {
-      role: 'user',
-      content: input.imageDataUrl
-        ? [
-            { type: 'text', text: `Prompt: ${input.prompt}\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nConfigured Keywords: ${input.activeKeywords.join(', ')}` },
-            { type: 'image_url', image_url: { url: input.imageDataUrl } }
-          ]
-        : `Prompt: ${input.prompt}\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nConfigured Keywords: ${input.activeKeywords.join(', ')}`,
-    },
-  ];
+PINNED KEYWORDS (MANDATORY - MUST BE INCLUDED): ${input.pinnedKeywords?.join(', ') || 'None'}
+ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.join(', ')}
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
+OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "title", "description", "tags", "recommendedBoard". Do NOT include markdown fences or think tags in the JSON.`;
+
+  const userTextPrompt = `Create high-CTR Pinterest SEO assets for:\nPrompt: "${input.prompt || 'Aesthetic Visual Art'}"\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nConfigured Keywords: ${input.activeKeywords.join(', ')}`;
+
+  const buildPayload = (includeImage: boolean) => {
+    const messages: any[] = [
+      { role: 'system', content: systemContent },
+      {
+        role: 'user',
+        content: includeImage && input.imageDataUrl
+          ? [
+              { type: 'text', text: userTextPrompt },
+              { type: 'image_url', image_url: { url: input.imageDataUrl } }
+            ]
+          : userTextPrompt,
+      },
+    ];
+
+    return {
       model: config.model || 'moonshotai/Kimi-K3',
       messages,
-      temperature: 0.3,
-      max_tokens: 2048,
+      temperature: 0.35,
+      max_tokens: 4096,
       top_p: 0.95,
       stream: false,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'pinterest_seo_result',
-          strict: true,
-          schema: {
-            type: 'object',
-            properties: {
-              title: { type: 'string' },
-              description: { type: 'string' },
-              tags: { type: 'array', items: { type: 'string' } },
-              recommendedBoard: { type: 'string' }
-            },
-            required: ['title', 'description', 'tags', 'recommendedBoard'],
-            additionalProperties: false
-          }
-        }
-      }
-    }),
-  });
+      response_format: { type: 'json_object' },
+    };
+  };
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(buildPayload(!!input.imageDataUrl)),
+    });
+
+    if (!response.ok && input.imageDataUrl) {
+      console.warn(`[Pinterest SEO] Vision call returned ${response.status}, retrying with text-only payload...`);
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(buildPayload(false)),
+      });
+    }
+  } catch (err) {
+    if (input.imageDataUrl) {
+      console.warn('[Pinterest SEO] Multimodal fetch failed, retrying text-only:', err);
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(buildPayload(false)),
+      });
+    } else {
+      throw err;
+    }
+  }
 
   if (!response.ok) {
     const errText = await response.text();
@@ -347,21 +494,97 @@ ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.join(', ')}`,
   }
 
   const data = await response.json();
-  const rawText = data.choices?.[0]?.message?.content || '{}';
-  const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-  const parsed = JSON.parse(cleanJson);
+  let rawText = data.choices?.[0]?.message?.content || '';
+  if (!rawText.trim() && data.choices?.[0]?.message?.reasoning_content) {
+    rawText = data.choices[0].message.reasoning_content;
+  }
+
+  const parsed = extractSafeJsonObject(rawText);
+
+  // Flexible key extraction
+  let title = parsed.title || parsed.pin_title || parsed.pinTitle || '';
+  let description = parsed.description || parsed.pin_description || parsed.pinDescription || '';
+  let rawTags: string[] = Array.isArray(parsed.tags) ? parsed.tags : (Array.isArray(parsed.keywords) ? parsed.keywords : []);
+  let recommendedBoard = parsed.recommendedBoard || parsed.recommended_board || parsed.board || 'Visual Inspiration';
+
+  // Topic keywords fallback
+  const pinnedKws = input.pinnedKeywords || [];
+  const otherKws = input.activeKeywords.filter((k) => !pinnedKws.includes(k));
+  const selectedKeywords = Array.from(new Set([...pinnedKws, ...otherKws])).slice(0, 4);
+
+  const topicWords = (input.prompt || '')
+    .replace(/[^\w\s]/gi, '')
+    .split(/\s+/)
+    .filter((w) => w.length > 3)
+    .slice(0, 4);
+  const mainSubject = topicWords.join(' ') || 'Visual Art Design';
+
+  // Fail-safe title
+  if (!title || typeof title !== 'string' || title.trim().length < 5) {
+    const primaryKw = selectedKeywords[0] || 'Aesthetic Wallpaper';
+    title = `${mainSubject.charAt(0).toUpperCase() + mainSubject.slice(1)} | ${primaryKw}`;
+  }
+  title = enforceCharLimit(title, 80);
+
+  // Fail-safe description
+  if (!description || typeof description !== 'string' || description.trim().length < 20) {
+    const pinnedText = pinnedKws.length > 0 ? `Specially featuring ${pinnedKws.join(', ')}.` : '';
+    const keywordSentence = selectedKeywords.length > 0
+      ? `Curated for lovers of ${selectedKeywords.join(', ')}.`
+      : 'Curated for aesthetic visual design.';
+    description = `Discover this mesmerizing ${mainSubject} concept crafted with cinematic lighting and high texture fidelity. ${pinnedText} ${keywordSentence} Perfect for creative inspiration, digital moodboards, and stunning display backdrops. Save this pin to your favorite art and design boards for daily visual motivation and prompt engineering ideas!`;
+  }
+
+  // Ensure all pinned keywords are inside description
+  for (const pk of pinnedKws) {
+    if (!description.toLowerCase().includes(pk.toLowerCase())) {
+      description = `${description} Featuring ${pk}.`;
+    }
+  }
+
+  // Process tags
+  let tags: string[] = [];
+  if (Array.isArray(rawTags) && rawTags.length > 0) {
+    for (const t of rawTags) {
+      if (typeof t === 'string') {
+        const clean = t.trim().startsWith('#') ? t.trim() : `#${t.trim().replace(/\s+/g, '')}`;
+        if (clean.length > 1 && !tags.includes(clean.toLowerCase())) {
+          tags.push(clean.toLowerCase());
+        }
+      }
+    }
+  }
+
+  // Top up tags to 8-10 if needed
+  if (tags.length < 8) {
+    const defaultTags = [
+      ...topicWords.map((w) => `#${w.toLowerCase()}`),
+      ...selectedKeywords.map((k) => `#${k.replace(/\s+/g, '').toLowerCase()}`),
+      '#aestheticart',
+      '#visualinspiration',
+      '#digitalillustration',
+      '#designideas',
+      '#pinterestviral',
+    ];
+    for (const dt of defaultTags) {
+      if (!tags.includes(dt) && tags.length < 10) {
+        tags.push(dt);
+      }
+    }
+  }
+  tags = tags.slice(0, 10);
 
   return {
-    title: parsed.title || 'Curated Aesthetic Pin',
-    description: parsed.description || '',
-    tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-    keywordsMatched: input.activeKeywords,
+    title,
+    description,
+    tags,
+    keywordsMatched: selectedKeywords,
     characterCounts: {
-      title: (parsed.title || '').length,
-      description: (parsed.description || '').length,
-      tagsCount: Array.isArray(parsed.tags) ? parsed.tags.length : 0,
+      title: title.length,
+      description: description.length,
+      tagsCount: tags.length,
     },
-    recommendedBoard: parsed.recommendedBoard || 'Visual Inspiration',
+    recommendedBoard,
   };
 }
 
@@ -369,73 +592,88 @@ async function executeCustomSiteApi(input: GenerationInput, config: ApiConfig): 
   const headers = buildAuthHeaders(config);
   const endpoint = resolveApiUrl(config);
 
-  const messages: any[] = [
-    {
-      role: 'system',
-      content: `You are an expert AI prompt engineer and Google SEO specialist.
-Analyze the user's uploaded reference image and prompt (typically realistic couple photography, portraits, candid moments, or multi-frame collages) and generate a production-ready image recreation specification, an ultra-focused Google SERP meta description, and high-intent SEO tags.
+  const systemContent = `You are an expert AI prompt engineer and Google SEO specialist for Arigato Labs.
+Analyze the user's prompt (typically realistic couple photography, portraits, candid moments, or multi-frame collages) and generate a production-ready image recreation specification, an ultra-focused Google SERP meta description, and high-intent SEO tags.
 
 FORMAT & CRITICAL OUTPUT RULES:
 
-1. "aboutPrompt": MUST BE STRICTLY UNDER 199 WORDS (target 130 to 185 words) written in clear, natural English across 3 to 4 cohesive paragraphs:
-   - Paragraph 1 (Scene & Candid Pose): Detail the subjects, specific setting (e.g. warm cafe, wooden elevator, cloudy balcony, indoor room, 3-frame collage), exact physical poses (e.g. nose-to-nose, leaning toward, cheek holding, cheek squishing, playful pouts, winking, touching heads, gripping scarf), and genuine affectionate chemistry.
+1. "aboutPrompt": MUST BE STRICTLY UNDER 199 WORDS (target 130 to 185 words) written in clear, natural English across 4 cohesive paragraphs:
+   - Paragraph 1 (Scene & Candid Pose): Detail the subjects, specific setting (e.g. warm cafe, wooden elevator, cloudy balcony, indoor room, 3-frame collage), exact physical poses (e.g. nose-to-nose, leaning toward, cheek holding, cheek squishing, playful pouts, winking, touching heads, gripping scarf, covering eyes), and genuine affectionate chemistry.
    - Paragraph 2 (Strict Identity Preservation): MUST include these exact realism principles: "Strict facial identity preservation is the highest priority. Preserve both reference identities with strict accuracy, including facial structure, proportions, eyes, nose, lips, skin tone, natural asymmetry, hairline, hairstyle, and authentic skin texture. Keep any reference glasses unchanged. Avoid beautification, skin smoothing, artificial glow, cinematic grading, or polished AI aesthetics."
-   - Paragraph 3 (Exact Outfits & Accessories): Faithfully describe specific clothing worn in the image (e.g. blush pink kurta, blue textured kurta with fabric weave, purple crochet dress, Naruto graphic tee, hats, sarees) and accessories (jhumka earrings, rings, bracelets, watches, glasses).
-   - Paragraph 4 (Lighting, Camera & Smartphone Realism): Detail realistic lighting (soft overcast daylight, warm amber indoor bulbs, overhead elevator glow, natural window light) and camera framing (9:16 vertical smartphone camera, low table-level angle, subtle sensor noise, realistic pores, hair flyaways, fabric wrinkles, slight lens distortion, and imperfect handheld framing). The final result should feel like a spontaneous smartphone snapshot. (Optionally conclude: "It's perfect for creating a special memorable picture to share with your boyfriend or girlfriend, a sweet and memorable way to share everyday romance.")
+   - Paragraph 3 (Exact Outfits & Accessories): Faithfully describe specific clothing worn or mentioned (e.g. blush pink kurta, blue textured kurta with fabric weave, purple crochet dress, Naruto graphic tee, hats, sarees) and accessories (jhumka earrings, rings, bracelets, watches, glasses).
+   - Paragraph 4 (Lighting, Camera & Smartphone Realism): Detail realistic lighting (soft overcast daylight, warm amber indoor bulbs, overhead elevator glow, natural window light) and camera framing (9:16 vertical smartphone camera, low table-level angle, subtle sensor noise, realistic pores, hair flyaways, fabric wrinkles, slight lens distortion, and imperfect handheld framing). The final result should feel like a spontaneous smartphone snapshot. Conclude with: "It's perfect for creating a special memorable picture to share with your boyfriend or girlfriend, a sweet and memorable way to share everyday romance."
 
 2. "seoDescription": MUST BE STRICTLY UNDER 160 CHARACTERS (target 125 to 155 characters).
    A natural, click-worthy Google SERP meta description in simple, clear English summarizing the prompt scene, outfits, lighting, and smartphone realism.
    MUST naturally incorporate any mandatory pinned keywords.
 
-3. "keywords": MUST CONTAIN STRICTLY 6 TO 9 (or up to 10) high-intent, real search queries that people search on Google, Pinterest, and Instagram.
+3. "keywords": MUST CONTAIN STRICTLY 6 TO 9 high-intent, real search queries that people search on Google, Pinterest, and Instagram.
    - MUST include ALL PINNED KEYWORDS.
-   - Include scene-specific phrases (e.g. "cheek squish couple selfie", "romantic cafe couple prompt", "elevator couple prompt", "fluffy hat couple selfie").
-   - Include high-intent platform queries (e.g. "Gemini couple prompt", "Gemini couple prompt Instagram", "Indian couple prompt for Gemini AI", "realistic couple prompt for Gemini AI", "couple prompt", "best AI prompt for couples").
+   - Include scene-specific phrases and high-intent queries (e.g. "Gemini couple prompt", "realistic couple prompt for Gemini AI", "couple prompt").
+
+4. "siteMetaTitle": A punchy SERP title under 65 chars (e.g. "Realistic Couple AI Prompt — Arigato Labs").
 
 PINNED KEYWORDS (MANDATORY - MUST BE INCLUDED): ${input.pinnedKeywords?.join(', ') || 'None'}
-ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.join(', ')}`,
-    },
-    {
-      role: 'user',
-      content: input.imageDataUrl
-        ? [
-            { type: 'text', text: `Create the prompt recreation specification for: "${input.prompt || 'Realistic couple photo'}"\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nActive Target Keywords: ${input.activeKeywords.join(', ')}` },
-            { type: 'image_url', image_url: { url: input.imageDataUrl } }
-          ]
-        : `Create the prompt recreation specification for: "${input.prompt || 'Realistic couple photo'}"\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nActive Target Keywords: ${input.activeKeywords.join(', ')}`,
-    },
-  ];
+ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.join(', ')}
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
+OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDescription", "keywords", "siteMetaTitle". Do NOT include markdown commentary or think tags in the JSON.`;
+
+  const userTextPrompt = `Create the prompt recreation specification for:\n"${input.prompt || 'Realistic couple photo'}"\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nActive Target Keywords: ${input.activeKeywords.join(', ')}`;
+
+  const buildPayload = (includeImage: boolean) => {
+    const messages: any[] = [
+      { role: 'system', content: systemContent },
+      {
+        role: 'user',
+        content: includeImage && input.imageDataUrl
+          ? [
+              { type: 'text', text: userTextPrompt },
+              { type: 'image_url', image_url: { url: input.imageDataUrl } }
+            ]
+          : userTextPrompt,
+      },
+    ];
+
+    return {
       model: config.model || 'moonshotai/Kimi-K3',
       messages,
-      temperature: 0.3,
-      max_tokens: 2048,
+      temperature: 0.35,
+      max_tokens: 4096,
       top_p: 0.95,
       stream: false,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'arigato_site_seo_result',
-          strict: true,
-          schema: {
-            type: 'object',
-            properties: {
-              aboutPrompt: { type: 'string' },
-              seoDescription: { type: 'string' },
-              keywords: { type: 'array', items: { type: 'string' } },
-              siteMetaTitle: { type: 'string' }
-            },
-            required: ['aboutPrompt', 'seoDescription', 'keywords', 'siteMetaTitle'],
-            additionalProperties: false
-          }
-        }
-      }
-    }),
-  });
+      response_format: { type: 'json_object' },
+    };
+  };
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(buildPayload(!!input.imageDataUrl)),
+    });
+
+    // If multimodal call returns 400/422/404 or fails, retry immediately with text-only payload
+    if (!response.ok && input.imageDataUrl) {
+      console.warn(`[Site SEO] Vision API returned status ${response.status}, retrying with text-only payload...`);
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(buildPayload(false)),
+      });
+    }
+  } catch (fetchErr) {
+    console.warn('[Site SEO] Fetch call failed, falling back to text-only or smart engine:', fetchErr);
+    if (input.imageDataUrl) {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(buildPayload(false)),
+      });
+    } else {
+      throw fetchErr;
+    }
+  }
 
   if (!response.ok) {
     const errText = await response.text();
@@ -443,14 +681,71 @@ ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.join(', ')}`,
   }
 
   const data = await response.json();
-  const rawText = data.choices?.[0]?.message?.content || '{}';
-  const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-  const parsed = JSON.parse(cleanJson);
+  let rawText = data.choices?.[0]?.message?.content || '';
+  if (!rawText.trim() && data.choices?.[0]?.message?.reasoning_content) {
+    rawText = data.choices[0].message.reasoning_content;
+  }
 
-  const aboutPrompt = enforceWordLimit(parsed.aboutPrompt || '', 199);
-  const seoDescription = enforceCharLimit(parsed.seoDescription || '', 160);
-  let keywords = Array.isArray(parsed.keywords) ? parsed.keywords : [];
-  if (keywords.length < 6) keywords = [...keywords, 'creative prompt engineering', 'arigato studio', 'ai visual art'];
+  const parsed = extractSafeJsonObject(rawText);
+
+  // Flexible key extraction
+  let rawAbout = parsed.aboutPrompt || parsed.about_prompt || parsed.about_this_prompt || parsed.aboutThisPrompt || parsed.prompt || parsed.about || '';
+  let rawSeoDesc = parsed.seoDescription || parsed.seo_description || parsed.meta_description || parsed.metaDescription || parsed.description || '';
+  let rawKeywords: string[] = Array.isArray(parsed.keywords)
+    ? parsed.keywords
+    : (Array.isArray(parsed.seo_keywords) ? parsed.seo_keywords : (Array.isArray(parsed.tags) ? parsed.tags : []));
+
+  // FAIL-SAFE CHECKS: Never allow empty or underspecified output to reach the user!
+  let aboutPrompt = (typeof rawAbout === 'string' && countWords(rawAbout) >= 25)
+    ? enforceWordLimit(rawAbout, 199)
+    : generateSmartAboutPrompt(input);
+
+  let seoDescription = (typeof rawSeoDesc === 'string' && rawSeoDesc.trim().length >= 15)
+    ? enforceCharLimit(rawSeoDesc, 160)
+    : generateSmartSeoDescription(input);
+
+  // Ensure all pinned keywords are inside description
+  const pinnedKws = input.pinnedKeywords || [];
+  for (const pk of pinnedKws) {
+    if (!seoDescription.toLowerCase().includes(pk.toLowerCase())) {
+      const candidate = `${pk} - ${seoDescription}`;
+      if (candidate.length <= 160) {
+        seoDescription = candidate;
+      }
+    }
+  }
+  seoDescription = enforceCharLimit(seoDescription, 160);
+
+  // Process keywords
+  let keywords: string[] = [];
+  if (Array.isArray(rawKeywords) && rawKeywords.length > 0) {
+    for (const kw of rawKeywords) {
+      if (typeof kw === 'string') {
+        const clean = kw.trim().toLowerCase().replace(/^#/, '');
+        if (clean && !keywords.includes(clean)) {
+          keywords.push(clean);
+        }
+      }
+    }
+  }
+
+  // Mandatorily prepend all pinned keywords
+  for (let i = pinnedKws.length - 1; i >= 0; i--) {
+    const pkClean = pinnedKws[i].trim().toLowerCase();
+    if (pkClean && !keywords.includes(pkClean)) {
+      keywords.unshift(pkClean);
+    }
+  }
+
+  // Ensure at least 6 and up to 9 keywords
+  if (keywords.length < 6) {
+    const fallbackKws = generateSmartKeywords(input);
+    for (const fb of fallbackKws) {
+      if (!keywords.includes(fb) && keywords.length < 9) {
+        keywords.push(fb);
+      }
+    }
+  }
   keywords = keywords.slice(0, 9);
 
   return {
@@ -460,7 +755,7 @@ ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.join(', ')}`,
     charCount: seoDescription.length,
     keywords,
     keywordsMatched: input.activeKeywords,
-    siteMetaTitle: parsed.siteMetaTitle,
+    siteMetaTitle: parsed.siteMetaTitle || parsed.site_meta_title || parsed.title || 'Realistic Couple AI Prompt — Arigato Labs',
   };
 }
 
@@ -583,8 +878,6 @@ Formatting Guidelines:
   };
 }
 
-/**
- * Intelligent Image Text & Keyword Extractor ("Grab Text" engine)
 /**
  * Real-Time Optical Text & Keyword Recognition ("Grab Text" engine)
  * Powered by Tesseract.js real client-side OCR engine.
