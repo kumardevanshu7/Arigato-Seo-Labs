@@ -1,0 +1,13 @@
+﻿{
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/modal-api/(.*)",
+      "destination": "https://devansh-grow--ep-kimi-k3-server.us-west.modal.direct/v1/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
