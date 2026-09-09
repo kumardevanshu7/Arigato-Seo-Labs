@@ -1,6 +1,6 @@
-import React from 'react';
-import type { SeoCategory } from '../types/seo';
-import { Sliders, KeyRound, Globe, Pin, FileText, Download, WifiOff } from 'lucide-react';
+import React, { useState } from 'react';
+import type { SeoCategory, UserProfile } from '../types/seo';
+import { Sliders, KeyRound, Globe, Pin, FileText, Download, WifiOff, LogOut, ChevronDown } from 'lucide-react';
 
 interface HeaderProps {
   activeCategory: SeoCategory;
@@ -13,6 +13,8 @@ interface HeaderProps {
   isInstallable?: boolean;
   onInstallApp?: () => void;
   isOnline?: boolean;
+  userProfile?: UserProfile | null;
+  onSignOut?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,7 +28,10 @@ export const Header: React.FC<HeaderProps> = ({
   isInstallable = false,
   onInstallApp,
   isOnline = true,
+  userProfile,
+  onSignOut,
 }) => {
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   return (
     <header className="sticky top-0 z-40 w-full bg-[#ffffff]/95 backdrop-blur-md border-b border-[#e5e3df]">
       {/* Main Navbar */}
@@ -181,6 +186,69 @@ export const Header: React.FC<HeaderProps> = ({
             <KeyRound className="w-3.5 h-3.5 text-[#ff64c8]" />
             <span className="hidden xs:inline">API</span>
           </button>
+
+          {/* User Profile Chip & Sign Out Dropdown */}
+          {userProfile && (
+            <div className="relative flex items-center">
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1 rounded-md border border-[#e5e3df] hover:bg-[#f6f5f4] transition-colors cursor-pointer"
+                title={`${userProfile.displayName} (${userProfile.email})`}
+              >
+                {userProfile.photoURL ? (
+                  <img
+                    src={userProfile.photoURL}
+                    alt={userProfile.displayName}
+                    className="w-5 h-5 rounded-full object-cover border border-[#5645d4]"
+                  />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-[#5645d4] text-white flex items-center justify-center text-[10px] font-bold">
+                    {userProfile.displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs font-semibold text-[#1a1a1a] hidden md:inline max-w-[90px] truncate">
+                  {userProfile.displayName}
+                </span>
+                <span className="text-xs hidden sm:inline" title={`Gender: ${userProfile.gender || 'Not set'}`}>
+                  {userProfile.gender === 'male'
+                    ? '👨'
+                    : userProfile.gender === 'female'
+                    ? '👩'
+                    : userProfile.gender === 'other'
+                    ? '🌈'
+                    : '🔒'}
+                </span>
+                <ChevronDown className="w-3 h-3 text-[#787671]" />
+              </button>
+
+              {/* Profile Dropdown Menu */}
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-xl shadow-xl border border-[#e5e3df] py-2 z-50 animate-in fade-in">
+                  <div className="px-3 pb-2 border-b border-[#f0eeec]">
+                    <p className="text-xs font-bold text-[#1a1a1a] truncate">{userProfile.displayName}</p>
+                    <p className="text-[10px] text-[#787671] truncate">{userProfile.email}</p>
+                    <span className="inline-block mt-1 text-[10px] bg-[#f6f5f4] text-[#5d5b54] px-1.5 py-0.5 rounded capitalize">
+                      {userProfile.gender ? `Gender: ${userProfile.gender.replace(/_/g, ' ')}` : 'Onboarded'}
+                    </span>
+                  </div>
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        onSignOut?.();
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs font-medium text-[#e60023] hover:bg-[#fde0ec]/50 flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out of Studio</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

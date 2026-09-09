@@ -20,9 +20,10 @@ const SAMPLE_KEYWORD_IDS = [
   'sk-1', 'sk-2', 'sk-3', 'sk-4', 'sk-5', 'sk-6', 'sk-7', 'sk-8',
 ];
 
-export const getStoredKeywords = (category: SeoCategory): KeywordItem[] => {
+export const getStoredKeywords = (category: SeoCategory, userId?: string): KeywordItem[] => {
   try {
-    const key = category === 'pinterest' ? STORAGE_KEYS.pinterestKeywords : STORAGE_KEYS.siteKeywords;
+    const baseKey = category === 'pinterest' ? STORAGE_KEYS.pinterestKeywords : STORAGE_KEYS.siteKeywords;
+    const key = userId ? `${baseKey}_${userId}` : baseKey;
     const raw = localStorage.getItem(key);
     if (!raw) {
       return [];
@@ -36,9 +37,10 @@ export const getStoredKeywords = (category: SeoCategory): KeywordItem[] => {
   }
 };
 
-export const saveStoredKeywords = (category: SeoCategory, keywords: KeywordItem[]): void => {
+export const saveStoredKeywords = (category: SeoCategory, keywords: KeywordItem[], userId?: string): void => {
   try {
-    const key = category === 'pinterest' ? STORAGE_KEYS.pinterestKeywords : STORAGE_KEYS.siteKeywords;
+    const baseKey = category === 'pinterest' ? STORAGE_KEYS.pinterestKeywords : STORAGE_KEYS.siteKeywords;
+    const key = userId ? `${baseKey}_${userId}` : baseKey;
     localStorage.setItem(key, JSON.stringify(keywords));
   } catch (e) {
     console.error('Failed to save keywords', e);

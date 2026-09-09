@@ -65,3 +65,22 @@ export interface ApiConfig {
   tokenId?: string;
   tokenSecret?: string;
 }
+
+export type UserGender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  gender?: UserGender;
+  onboarded: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SecuritySettings {
+  keywordLockEnabled: boolean;
+  keywordPasscode?: string;
+}
+

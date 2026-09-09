@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { KeywordItem, SeoCategory } from '../types/seo';
-import { X, Plus, Trash2, CheckCircle2, Pin, Globe, Tag } from 'lucide-react';
+import type { KeywordItem, SeoCategory, SecuritySettings } from '../types/seo';
+import { X, Plus, Trash2, CheckCircle2, Pin, Globe, Tag, Lock, Check } from 'lucide-react';
 
 interface KeywordsDrawerProps {
   isOpen: boolean;
@@ -11,6 +11,8 @@ interface KeywordsDrawerProps {
   onUpdatePinterestKeywords: (kws: KeywordItem[]) => void;
   onUpdateSiteKeywords: (kws: KeywordItem[]) => void;
   isFirestoreConnected?: boolean;
+  securitySettings?: SecuritySettings;
+  onUpdateSecuritySettings?: (settings: SecuritySettings) => void;
 }
 
 export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
@@ -22,11 +24,19 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
   onUpdatePinterestKeywords,
   onUpdateSiteKeywords,
   isFirestoreConnected = true,
+  securitySettings,
+  onUpdateSecuritySettings,
 }) => {
   const [selectedTab, setSelectedTab] = useState<SeoCategory>(activeCategory);
   const [singleInput, setSingleInput] = useState('');
   const [bulkInput, setBulkInput] = useState('');
   const [showBulkAdd, setShowBulkAdd] = useState(false);
+
+  // Security Lock Config State
+  const [showLockConfig, setShowLockConfig] = useState(false);
+  const [passcodeDraft, setPasscodeDraft] = useState(securitySettings?.keywordPasscode || '');
+  const [lockEnabledDraft, setLockEnabledDraft] = useState(securitySettings?.keywordLockEnabled || false);
+  const [lockSavedSuccess, setLockSavedSuccess] = useState(false);
 
   if (!isOpen) return null;
 
@@ -179,6 +189,104 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
             <Globe className="w-3.5 h-3.5" />
             <span>Arigato Site ({siteKeywords.length})</span>
           </button>
+        </div>
+
+        {/* One-Time Passcode Security Banner */}
+        <div className="border-b border-[#ede9e4] bg-[#fdfcfb]">
+          <div className="px-3.5 sm:px-5 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center ${securitySettings?.keywordLockEnabled ? 'bg-[#d9f3e1] text-[#1aae39]' : 'bg-gray-100 text-gray-500'}`}>
+                <Lock className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-[#1a1a1a] block">
+                  Keywords Passcode Lock: {securitySettings?.keywordLockEnabled ? 'Active 🔒' : 'Disabled'}
+                </span>
+                <span className="text-[10px] text-[#787671] block">
+                  {securitySettings?.keywordLockEnabled
+                    ? 'Passcode required to open or update keywords'
+                    : 'Prevent unauthorized changes to your keyword space'}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowLockConfig(!showLockConfig)}
+              className="text-[11px] font-semibold text-[#5645d4] hover:underline cursor-pointer shrink-0 ml-2"
+            >
+              {showLockConfig ? 'Close' : 'Configure'}
+            </button>
+          </div>
+
+          {/* Expandable Lock Configuration Panel */}
+          {showLockConfig && (
+            <div className="px-3.5 sm:px-5 py-3 bg-[#f6f5f4] border-t border-[#ede9e4] space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-[#1a1a1a] block">Enable Passcode Lock</span>
+                  <span className="text-[10px] text-[#787671] block">
+                    Requires PIN when opening or modifying keywords
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={lockEnabledDraft}
+                    onChange={(e) => setLockEnabledDraft(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#1aae39]"></div>
+                </label>
+              </div>
+
+              {lockEnabledDraft && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#37352f] mb-1">
+                    Set Security Passcode / PIN
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={passcodeDraft}
+                      onChange={(e) => setPasscodeDraft(e.target.value)}
+                      placeholder="e.g. 7890 or MySecretPin"
+                      className="flex-1 px-3 py-1.5 text-xs bg-white border border-[#c8c4be] rounded-md font-mono focus:outline-none focus:border-[#5645d4] text-[#1a1a1a]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-1">
+                {lockSavedSuccess ? (
+                  <span className="text-xs text-[#1aae39] font-semibold flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Passcode settings saved!
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-[#787671]">Saved to your private Firestore profile</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (lockEnabledDraft && !passcodeDraft.trim()) {
+                      alert('Please enter a passcode to enable Keyword Lock.');
+                      return;
+                    }
+                    if (onUpdateSecuritySettings) {
+                      onUpdateSecuritySettings({
+                        keywordLockEnabled: lockEnabledDraft,
+                        keywordPasscode: passcodeDraft.trim(),
+                      });
+                      setLockSavedSuccess(true);
+                      setTimeout(() => setLockSavedSuccess(false), 2200);
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-[#5645d4] hover:bg-[#4534b3] text-white text-xs font-semibold rounded-md shadow-2xs transition-colors cursor-pointer"
+                >
+                  Save Passcode
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Add Keywords Section */}
