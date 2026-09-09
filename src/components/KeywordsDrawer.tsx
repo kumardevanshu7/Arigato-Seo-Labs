@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { KeywordItem, SeoCategory, SecuritySettings } from '../types/seo';
-import { X, Plus, Trash2, CheckCircle2, Pin, Globe, Tag, Lock, Check, Cloud } from 'lucide-react';
+import { X, Plus, Trash2, CheckCircle2, Pin, Globe, Tag, Lock, Check, Cloud, AlertTriangle } from 'lucide-react';
 
 interface KeywordsDrawerProps {
   isOpen: boolean;
@@ -37,6 +37,10 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
   const [passcodeDraft, setPasscodeDraft] = useState(securitySettings?.keywordPasscode || '');
   const [lockEnabledDraft, setLockEnabledDraft] = useState(securitySettings?.keywordLockEnabled || false);
   const [lockSavedSuccess, setLockSavedSuccess] = useState(false);
+
+  // Clear All Danger Confirmation Modal State
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [deleteConfirmationInput, setDeleteConfirmationInput] = useState('');
 
   if (!isOpen) return null;
 
@@ -343,7 +347,10 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
                   <span>•</span>
                   <button
                     type="button"
-                    onClick={() => updateCurrentList([])}
+                    onClick={() => {
+                      setDeleteConfirmationInput('');
+                      setShowClearConfirmModal(true);
+                    }}
                     className="text-red-500 hover:text-red-700 cursor-pointer font-medium"
                     title="Delete all keywords from Cloud Firestore"
                   >
@@ -503,6 +510,84 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Clear All Safety Confirmation Modal (Requires typing "DELETE") */}
+      {showClearConfirmModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowClearConfirmModal(false);
+              setDeleteConfirmationInput('');
+            }
+          }}
+        >
+          <div className="bg-white rounded-2xl border border-[#e5e3df] shadow-2xl max-w-sm w-full p-5 sm:p-6 text-center animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3.5 shadow-xs">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-[#1a1a1a] mb-1.5">
+              Clear All {selectedTab === 'pinterest' ? 'Pinterest' : 'Site'} Keywords?
+            </h3>
+            <p className="text-xs text-[#787671] mb-4 leading-relaxed">
+              This will permanently delete all <strong className="text-red-600 font-semibold">{currentList.length}</strong> keywords from Cloud Firestore. This action cannot be reversed.
+            </p>
+
+            <div className="mb-4 text-left">
+              <label className="block text-xs font-semibold text-[#37352f] mb-1.5 text-center">
+                Please type <span className="font-mono font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">DELETE</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationInput}
+                onChange={(e) => setDeleteConfirmationInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && deleteConfirmationInput.trim() === 'DELETE') {
+                    updateCurrentList([]);
+                    setShowClearConfirmModal(false);
+                    setDeleteConfirmationInput('');
+                  }
+                }}
+                placeholder="Type DELETE"
+                autoFocus
+                className="w-full p-2.5 text-center font-mono font-bold text-sm tracking-widest uppercase bg-[#fafaf9] border border-[#c8c4be] rounded-lg focus:outline-none focus:border-red-500 focus:bg-white text-[#1a1a1a] transition-all"
+              />
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowClearConfirmModal(false);
+                  setDeleteConfirmationInput('');
+                }}
+                className="flex-1 py-2.5 px-3 text-xs font-semibold text-[#5d5b54] bg-[#f4f3f0] hover:bg-[#ede9e4] rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteConfirmationInput.trim() !== 'DELETE'}
+                onClick={() => {
+                  if (deleteConfirmationInput.trim() === 'DELETE') {
+                    updateCurrentList([]);
+                    setShowClearConfirmModal(false);
+                    setDeleteConfirmationInput('');
+                  }
+                }}
+                className={`flex-1 py-2.5 px-3 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  deleteConfirmationInput.trim() === 'DELETE'
+                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm cursor-pointer active:scale-[0.98]'
+                    : 'bg-red-100 text-red-300 cursor-not-allowed border border-red-200/50'
+                }`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete All</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
