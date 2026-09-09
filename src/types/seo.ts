@@ -82,5 +82,7 @@ export interface UserProfile {
 export interface SecuritySettings {
   keywordLockEnabled: boolean;
   keywordPasscode?: string;
+  securityQuestion?: string;
+  securityAnswer?: string;
 }
 

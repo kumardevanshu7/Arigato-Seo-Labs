@@ -16,6 +16,7 @@ import {
   subscribeToKeywords,
   saveKeywordsToFirestore,
   fetchKeywordsFromFirestore,
+  signInWithGoogle,
 } from './services/firebase';
 import { Header } from './components/Header';
 import { HeroBanner } from './components/HeroBanner';
@@ -27,9 +28,10 @@ import { ApiIntegrationModal } from './components/ApiIntegrationModal';
 import { Footer } from './components/Footer';
 import { ChatAssistant } from './components/ChatAssistant';
 import { ArigatoBrandModal, type BrandTab } from './components/ArigatoBrandModal';
-import { AuthScreen } from './components/AuthScreen';
+import { LandingPage } from './components/LandingPage';
 import { OnboardingModal } from './components/OnboardingModal';
 import { KeywordLockModal } from './components/KeywordLockModal';
+import { SecuritySettingsModal } from './components/SecuritySettingsModal';
 import { usePWA } from './hooks/usePWA';
 
 export const App: React.FC = () => {
@@ -40,13 +42,20 @@ export const App: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // Security / Passcode Lock State
+  // Security / Passcode / Security Q&A Lock State
   const [securitySettings, setSecuritySettings] = useState<SecuritySettings>({
     keywordLockEnabled: false,
     keywordPasscode: '',
+    securityQuestion: '',
+    securityAnswer: '',
   });
   const [isKeywordsUnlocked, setIsKeywordsUnlocked] = useState(false);
   const [isKeywordLockModalOpen, setIsKeywordLockModalOpen] = useState(false);
+  const [isSecuritySettingsOpen, setIsSecuritySettingsOpen] = useState(false);
+
+  // Landing Page Sign-In States
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authErrorMsg, setAuthErrorMsg] = useState<string | null>(null);
 
   // PWA & Service Worker Status
   const { isInstallable, isInstalled, isOnline, installApp } = usePWA();
@@ -184,13 +193,14 @@ export const App: React.FC = () => {
     }
   };
 
-  // Keyword Lock Passcode Handlers
+  // Keyword Lock Status & Handlers
+  const isKeywordLockActive = Boolean(
+    securitySettings.keywordLockEnabled &&
+      (securitySettings.securityAnswer || securitySettings.keywordPasscode)
+  );
+
   const handleOpenKeywordsDrawer = () => {
-    if (
-      securitySettings.keywordLockEnabled &&
-      securitySettings.keywordPasscode &&
-      !isKeywordsUnlocked
-    ) {
+    if (isKeywordLockActive && !isKeywordsUnlocked) {
       setIsKeywordLockModalOpen(true);
     } else {
       setIsKeywordsOpen(true);
@@ -201,6 +211,28 @@ export const App: React.FC = () => {
     setIsKeywordsUnlocked(true);
     setIsKeywordLockModalOpen(false);
     setIsKeywordsOpen(true);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsSigningIn(true);
+    setAuthErrorMsg(null);
+    try {
+      await signInWithGoogle();
+    } catch (err: unknown) {
+      console.error('[App] Google Sign-In Error:', err);
+      const error = err as { code?: string; message?: string };
+      if (error.code === 'auth/popup-closed-by-user') {
+        setAuthErrorMsg('Sign-in popup closed. Click button to try again.');
+      } else if (error.code === 'auth/unauthorized-domain') {
+        setAuthErrorMsg(
+          'This domain is not authorized in Firebase. Please add this domain to Firebase Console > Authentication > Settings > Authorized Domains.'
+        );
+      } else {
+        setAuthErrorMsg(error.message || 'Unable to sign in with Google. Please try again.');
+      }
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
   const handleUpdateSecuritySettings = (newSettings: SecuritySettings) => {
@@ -279,9 +311,15 @@ export const App: React.FC = () => {
     );
   }
 
-  // 2. If user is NOT logged in -> Show Google Sign-In Screen
+  // 2. If user is NOT logged in -> Show High-Converting Sweet Landing Page
   if (!currentUser) {
-    return <AuthScreen />;
+    return (
+      <LandingPage
+        onSignInClick={handleGoogleSignIn}
+        isLoading={isSigningIn}
+        errorMsg={authErrorMsg}
+      />
+    );
   }
 
   // 3. If user IS logged in but NOT onboarded yet -> Show Name & Gender Onboarding
@@ -310,6 +348,7 @@ export const App: React.FC = () => {
           setBrandModalTab('explore');
           setIsBrandModalOpen(true);
         }}
+        onOpenSecuritySettings={() => setIsSecuritySettingsOpen(true)}
         pinterestKwCount={activePinterestKwCount}
         siteKwCount={activeSiteKwCount}
         isInstallable={isInstallable && !isInstalled}
@@ -317,6 +356,7 @@ export const App: React.FC = () => {
         isOnline={isOnline}
         userProfile={userProfile}
         onSignOut={handleSignOut}
+        isKeywordLockActive={isKeywordLockActive}
       />
 
       {/* Notion Navy Atmospheric Hero Section */}
@@ -368,15 +408,25 @@ export const App: React.FC = () => {
         onUpdateSecuritySettings={handleUpdateSecuritySettings}
       />
 
-      {/* One-Time Passcode Security Verification Modal */}
-      {securitySettings.keywordLockEnabled && securitySettings.keywordPasscode && (
+      {/* Security Verification Modal (Security Question Q&A or Passcode) */}
+      {isKeywordLockActive && (
         <KeywordLockModal
           isOpen={isKeywordLockModalOpen}
           onClose={() => setIsKeywordLockModalOpen(false)}
+          securityQuestion={securitySettings.securityQuestion}
+          expectedAnswer={securitySettings.securityAnswer}
           expectedPasscode={securitySettings.keywordPasscode}
           onSuccess={handleKeywordLockSuccess}
         />
       )}
+
+      {/* Keywords Security Settings Modal */}
+      <SecuritySettingsModal
+        isOpen={isSecuritySettingsOpen}
+        onClose={() => setIsSecuritySettingsOpen(false)}
+        currentSettings={securitySettings}
+        onSave={handleUpdateSecuritySettings}
+      />
 
       {/* Custom API / Integration Modal */}
       <ApiIntegrationModal

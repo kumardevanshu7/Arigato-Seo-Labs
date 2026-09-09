@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { UserGender, UserProfile } from '../types/seo';
 import { saveUserProfile, signOutUser } from '../services/firebase';
-import { Sparkles, User, LogOut, Check } from 'lucide-react';
+import { Sparkles, User, LogOut, Check, Shield } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface OnboardingModalProps {
@@ -75,11 +75,46 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     }
   };
 
-  const genderOptions: { id: UserGender; label: string; icon: string; desc: string }[] = [
-    { id: 'male', label: 'Male', icon: '👨', desc: 'He / Him' },
-    { id: 'female', label: 'Female', icon: '👩', desc: 'She / Her' },
-    { id: 'other', label: 'Non-Binary / Other', icon: '🌈', desc: 'They / Them' },
-    { id: 'prefer_not_to_say', label: 'Prefer not to say', icon: '🔒', desc: 'Private' },
+  const genderOptions: {
+    id: UserGender;
+    label: string;
+    desc: string;
+    badgeBg: string;
+    iconColor: string;
+    icon: 'male' | 'female' | 'other' | 'private';
+  }[] = [
+    {
+      id: 'male',
+      label: 'Male',
+      desc: 'He / Him',
+      badgeBg: 'bg-[#3b82f6]/10 border-[#3b82f6]/30',
+      iconColor: 'text-[#3b82f6]',
+      icon: 'male',
+    },
+    {
+      id: 'female',
+      label: 'Female',
+      desc: 'She / Her',
+      badgeBg: 'bg-[#ec4899]/10 border-[#ec4899]/30',
+      iconColor: 'text-[#ec4899]',
+      icon: 'female',
+    },
+    {
+      id: 'other',
+      label: 'Non-Binary / Other',
+      desc: 'They / Them',
+      badgeBg: 'bg-[#a855f7]/10 border-[#a855f7]/30',
+      iconColor: 'text-[#a855f7]',
+      icon: 'other',
+    },
+    {
+      id: 'prefer_not_to_say',
+      label: 'Prefer not to say',
+      desc: 'Private',
+      badgeBg: 'bg-[#71717a]/10 border-[#71717a]/30',
+      iconColor: 'text-[#71717a]',
+      icon: 'private',
+    },
   ];
 
   return (
@@ -167,7 +202,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <span className="text-xl">{opt.icon}</span>
+                        <div
+                          className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${opt.badgeBg} ${opt.iconColor}`}
+                        >
+                          {opt.icon === 'male' && <User className="w-4 h-4" />}
+                          {opt.icon === 'female' && <User className="w-4 h-4" />}
+                          {opt.icon === 'other' && <Sparkles className="w-4 h-4" />}
+                          {opt.icon === 'private' && <Shield className="w-4 h-4" />}
+                        </div>
                         <div>
                           <span className="text-xs font-semibold text-[#1a1a1a] block">
                             {opt.label}

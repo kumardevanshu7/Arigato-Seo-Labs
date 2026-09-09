@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { KeywordItem, SeoCategory, SecuritySettings } from '../types/seo';
-import { X, Plus, Trash2, CheckCircle2, Pin, Globe, Tag, Lock, Check } from 'lucide-react';
+import { X, Plus, Trash2, CheckCircle2, Pin, Globe, Tag, Lock, Check, Cloud } from 'lucide-react';
 
 interface KeywordsDrawerProps {
   isOpen: boolean;
@@ -146,10 +146,10 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
                 Active: {activeCount}/{currentList.length}
               </span>
               <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-[#fef3c7] border border-[#fde047] text-[#92400e] font-semibold flex items-center gap-1">
-                📌 Pinned: {pinnedCount}
+                <Pin className="w-3 h-3" /> Pinned: {pinnedCount}
               </span>
               <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1] font-semibold flex items-center gap-1">
-                ☁️ Firestore {isFirestoreConnected ? 'Live' : 'Syncing'}
+                <Cloud className="w-3 h-3" /> Firestore {isFirestoreConnected ? 'Live' : 'Syncing'}
               </span>
             </div>
             <p className="text-[11px] sm:text-xs text-[#787671] mt-0.5">
@@ -199,8 +199,14 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
                 <Lock className="w-3.5 h-3.5" />
               </div>
               <div>
-                <span className="text-xs font-semibold text-[#1a1a1a] block">
-                  Keywords Passcode Lock: {securitySettings?.keywordLockEnabled ? 'Active 🔒' : 'Disabled'}
+                <span className="text-xs font-semibold text-[#1a1a1a] flex items-center gap-1">
+                  Keywords Passcode Lock: {securitySettings?.keywordLockEnabled ? (
+                    <span className="inline-flex items-center gap-1 text-[#1aae39]">
+                      Active <Lock className="w-3 h-3" />
+                    </span>
+                  ) : (
+                    'Disabled'
+                  )}
                 </span>
                 <span className="text-[10px] text-[#787671] block">
                   {securitySettings?.keywordLockEnabled
@@ -382,7 +388,7 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
 
           {/* Pin Feature Guidance Banner */}
           <div className="mt-2.5 p-2.5 bg-[#fef9c3]/80 border border-[#fde047] rounded-lg text-[11px] text-[#854d0e] flex items-start gap-2">
-            <span className="text-sm shrink-0 leading-none mt-0.5">📌</span>
+            <Pin className="w-4 h-4 text-[#854d0e] shrink-0 mt-0.5" />
             <div className="leading-snug">
               <span className="font-bold">Pin Keyword Rule:</span> Jis keyword par aap <strong>Pin (Must Include)</strong> lagayenge, system use <strong>har halat mein SEO description mein include karega</strong>. Baaki terms context ke mutabik intelligently match honge.
             </div>
@@ -447,11 +453,11 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
                     }`}
                     title={
                       kw.isPinned
-                        ? '📌 Pinned: Always included in SEO description. Click to unpin.'
+                        ? 'Pinned: Always included in SEO description. Click to unpin.'
                         : 'Click to Pin: Force mandatory inclusion in SEO descriptions'
                     }
                   >
-                    <span>📌</span>
+                    <Pin className="w-3 h-3" />
                     <span>{kw.isPinned ? 'Must Include' : 'Pin'}</span>
                   </button>
 
