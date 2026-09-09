@@ -17,6 +17,16 @@ export interface KeywordItem {
   searchVolumeHint?: string;
 }
 
+export interface PinterestVariation {
+  id: number;
+  title: string;
+  description: string;
+  characterCounts: {
+    title: number;
+    description: number;
+  };
+}
+
 export interface PinterestSeoResult {
   title: string;
   description: string;
@@ -28,6 +38,7 @@ export interface PinterestSeoResult {
     tagsCount: number;
   };
   recommendedBoard?: string;
+  variations?: PinterestVariation[];
 }
 
 export interface ArigatoSiteSeoResult {
@@ -48,6 +59,7 @@ export interface GenerationInput {
   activeKeywords: string[];
   pinnedKeywords?: string[]; // 📌 Mandatory keywords that MUST appear in descriptions
   pinterestFormat?: 'with_link' | 'search_steps'; // Dual-mode for Pinterest: With Link CTA vs Google Search Steps
+  variationCount?: number; // Desired number of pin variations (2, 3, 4, 5 - default 2)
 }
 
 export interface GenerationState {

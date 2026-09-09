@@ -30,6 +30,8 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string>('');
   const [pinterestFormat, setPinterestFormat] = useState<'with_link' | 'search_steps'>('with_link');
+  const [variationCount, setVariationCount] = useState<number>(2);
+  const [activeVariationIndex, setActiveVariationIndex] = useState<number>(0);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
@@ -62,6 +64,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
           activeKeywords,
           pinnedKeywords,
           pinterestFormat,
+          variationCount,
         },
         (step, msg) => {
           setProgressStep(step);
@@ -70,6 +73,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
       );
 
       setResult(seoOutput);
+      setActiveVariationIndex(0);
 
       // Trigger celebratory confetti
       confetti({
@@ -92,10 +96,47 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
     setTimeout(() => setCopiedField(null), 2200);
   };
 
-  const copyAll = () => {
+  const currentVariations = result?.variations && result.variations.length > 0
+    ? result.variations
+    : result
+    ? [
+        {
+          id: 1,
+          title: result.title,
+          description: result.description,
+          characterCounts: result.characterCounts,
+        },
+      ]
+    : [];
+
+  const activeVariation = currentVariations[activeVariationIndex] || currentVariations[0] || {
+    id: 1,
+    title: result?.title || '',
+    description: result?.description || '',
+    characterCounts: result?.characterCounts || { title: 0, description: 0 },
+  };
+
+  const copyActiveVariation = () => {
     if (!result) return;
-    const fullText = `📌 PINTEREST SEO TITLE:\n${result.title}\n\n📝 PINTEREST DESCRIPTION:\n${result.description}\n\n🏷️ PINTEREST TAGS:\n${result.tags.join(' ')}`;
-    copyToClipboard(fullText, 'all');
+    const fullText = `📌 PINTEREST SEO TITLE (Version ${activeVariationIndex + 1}):\n${activeVariation.title}\n\n📝 PINTEREST DESCRIPTION:\n${activeVariation.description}\n\n🏷️ PINTEREST TAGS:\n${result.tags.join(' ')}`;
+    copyToClipboard(fullText, 'active');
+  };
+
+  const copyAllVariations = () => {
+    if (!result) return;
+    if (currentVariations.length <= 1) {
+      copyActiveVariation();
+      return;
+    }
+    let fullText = `🎨 PINTEREST SEO MULTI-PIN PACK (${currentVariations.length} VARIATIONS)\n`;
+    fullText += `==============================================\n\n`;
+    currentVariations.forEach((v, idx) => {
+      fullText += `--- 📌 VARIATION ${idx + 1} ---\n`;
+      fullText += `TITLE:\n${v.title}\n\n`;
+      fullText += `DESCRIPTION:\n${v.description}\n\n`;
+    });
+    fullText += `🏷️ COMMON TAGS:\n${result.tags.join(' ')}\n`;
+    copyToClipboard(fullText, 'all_variations');
   };
 
   return (
@@ -188,6 +229,38 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
               </div>
             </div>
 
+            {/* Pinterest Variations Selector (2 - 5 versions) */}
+            <div className="mb-4 sm:mb-5 min-w-0">
+              <div className="flex items-center justify-between mb-1.5 min-w-0 gap-2">
+                <label className="text-xs font-semibold text-[#37352f] truncate flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[#e60023]" />
+                  <span>Pin Variations (Multi-Version Output)</span>
+                </label>
+                <span className="text-[10px] font-semibold text-[#e60023] bg-[#fde0ec] px-2 py-0.5 rounded-full shrink-0">
+                  {variationCount} Variations
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5 p-1 bg-[#f4f3f0] rounded-lg border border-[#e5e3df] min-w-0">
+                {[2, 3, 4, 5].map((cnt) => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    onClick={() => setVariationCount(cnt)}
+                    className={`py-1.5 px-1 rounded-md text-xs font-semibold transition-all text-center cursor-pointer min-w-0 ${
+                      variationCount === cnt
+                        ? 'bg-white shadow-xs border border-[#e60023]/40 text-[#e60023]'
+                        : 'text-[#787671] hover:text-[#1a1a1a] hover:bg-white/60'
+                    }`}
+                  >
+                    {cnt} Versions
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-[#787671] mt-1.5">
+                Generates {variationCount} distinct titles & descriptions with rotated keywords to prevent duplicate penalties on Pinterest.
+              </p>
+            </div>
+
             {/* Prompt / Topic Text Area */}
             <div className="mb-4 sm:mb-5">
               <div className="flex items-center justify-between mb-1.5">
@@ -212,7 +285,9 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-[#1a1a1a] flex items-center gap-1.5 truncate">
                   <Tag className="w-3.5 h-3.5 text-[#e60023] shrink-0" />
-                  <span className="truncate">Keywords ({activeKeywords.length} active • 📌 {pinnedKeywords.length} pinned)</span>
+                  <span className="truncate">
+                    Keywords ({activeKeywords.length} active • {pinnedKeywords.length} pinned)
+                  </span>
                 </span>
                 <button
                   type="button"
@@ -234,9 +309,9 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                     <span
                       key={`pin-${i}`}
                       className="text-[11px] font-semibold bg-[#fef3c7] border border-[#f59e0b] text-[#92400e] px-2 py-0.5 rounded shadow-2xs flex items-center gap-1"
-                      title="📌 Pinned: Mandatory in Pinterest description"
+                      title="Pinned: Mandatory in Pinterest description"
                     >
-                      <span>📌</span>
+                      <Pin className="w-3 h-3 text-[#92400e]" />
                       <span>{kw}</span>
                     </span>
                   ))}
@@ -325,47 +400,105 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
             /* Generated Results */
             <div className="space-y-5 sm:space-y-6 animate-in fade-in">
               {/* Action Bar */}
-              <div className="flex items-center justify-between bg-white p-3 sm:p-3.5 rounded-xl border border-[#e5e3df] shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2.5 bg-white p-3 sm:p-3.5 rounded-xl border border-[#e5e3df] shadow-xs">
                 <div className="flex items-center gap-2 truncate">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#1aae39] shrink-0"></span>
                   <span className="text-xs font-semibold text-[#1a1a1a] truncate">
                     Pinterest SEO Generated
                   </span>
+                  {currentVariations.length > 1 && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#e6e0f5] text-[#5645d4] shrink-0">
+                      v{activeVariationIndex + 1} of {currentVariations.length}
+                    </span>
+                  )}
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#fde0ec] text-[#e60023] shrink-0">
-                    {pinterestFormat === 'with_link' ? '🔗 With Link' : '🔍 Search Steps'}
+                    {pinterestFormat === 'with_link' ? 'With Link' : 'Search Steps'}
                   </span>
                 </div>
-                <button
-                  onClick={copyAll}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-[#0a1530] hover:bg-[#1a2a52] text-white text-xs font-medium rounded-md shadow-xs transition-all cursor-pointer shrink-0 ml-2"
-                >
-                  {copiedField === 'all' ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-[#1aae39]" />
-                      <span>Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 text-[#ff64c8]" />
-                      <span>Copy All</span>
-                    </>
+                <div className="flex items-center gap-2 shrink-0">
+                  {currentVariations.length > 1 && (
+                    <button
+                      onClick={copyAllVariations}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-[#f4f3f0] hover:bg-[#ede9e4] text-[#1a1a1a] border border-[#d8d5ce] text-xs font-medium rounded-md shadow-2xs transition-all cursor-pointer"
+                      title="Copy all generated variations together"
+                    >
+                      {copiedField === 'all_variations' ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-[#1aae39]" />
+                          <span>Copied All {currentVariations.length}!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Layers className="w-3.5 h-3.5 text-[#5645d4]" />
+                          <span>Copy All {currentVariations.length}</span>
+                        </>
+                      )}
+                    </button>
                   )}
-                </button>
+                  <button
+                    onClick={copyActiveVariation}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-[#0a1530] hover:bg-[#1a2a52] text-white text-xs font-medium rounded-md shadow-xs transition-all cursor-pointer"
+                  >
+                    {copiedField === 'active' ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-[#1aae39]" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-[#ff64c8]" />
+                        <span>Copy Version {activeVariationIndex + 1}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
+
+              {/* Multi-Variation Tab Switcher */}
+              {currentVariations.length > 1 && (
+                <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-[#e5e3df] shadow-xs">
+                  <div className="flex items-center justify-between mb-2 px-0.5">
+                    <span className="text-xs font-bold text-[#1a1a1a] uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[#e60023]" />
+                      <span>Generated Variations ({currentVariations.length} Versions)</span>
+                    </span>
+                    <span className="text-[10px] text-[#787671]">Select version to inspect & copy</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
+                    {currentVariations.map((v, idx) => (
+                      <button
+                        key={v.id || idx}
+                        type="button"
+                        onClick={() => setActiveVariationIndex(idx)}
+                        className={`py-2 px-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 min-w-0 ${
+                          activeVariationIndex === idx
+                            ? 'bg-[#e60023] text-white shadow-xs'
+                            : 'bg-[#f4f3f0] text-[#5d5b54] hover:bg-[#ede9e4] hover:text-[#1a1a1a]'
+                        }`}
+                      >
+                        <Pin className={`w-3 h-3 ${activeVariationIndex === idx ? 'fill-white' : 'text-[#787671]'}`} />
+                        <span className="truncate">Version {idx + 1}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* 1. SEO Title Card */}
               <div className="bg-white rounded-xl border border-[#e5e3df] p-4 sm:p-5 shadow-xs">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#787671] flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#5645d4]" />
-                    <span>SEO Pin Title</span>
+                    <span>
+                      SEO Pin Title {currentVariations.length > 1 ? `(Version ${activeVariationIndex + 1})` : ''}
+                    </span>
                   </span>
                   <div className="flex items-center gap-2 sm:gap-3">
                     <span className="text-[10px] sm:text-[11px] text-[#787671] font-mono">
-                      {result.characterCounts.title} chars
+                      {activeVariation.characterCounts.title} chars
                     </span>
                     <button
-                      onClick={() => copyToClipboard(result.title, 'title')}
+                      onClick={() => copyToClipboard(activeVariation.title, 'title')}
                       className="p-1.5 hover:bg-[#f6f5f4] rounded text-[#5d5b54] hover:text-[#5645d4] transition-colors cursor-pointer"
                       title="Copy Title"
                     >
@@ -378,7 +511,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                   </div>
                 </div>
                 <p className="text-xs sm:text-sm font-semibold text-[#1a1a1a] bg-[#fafaf9] p-3 rounded-lg border border-[#ede9e4] select-all leading-snug">
-                  {result.title}
+                  {activeVariation.title}
                 </p>
               </div>
 
@@ -387,14 +520,25 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#787671] flex items-center gap-1.5">
                     <MessageSquare className="w-3.5 h-3.5 text-[#e60023]" />
-                    <span>SEO Pin Description</span>
+                    <span>
+                      SEO Pin Description {currentVariations.length > 1 ? `(Version ${activeVariationIndex + 1})` : ''}
+                    </span>
                   </span>
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <span className="text-[10px] sm:text-[11px] text-[#787671] font-mono">
-                      {result.characterCounts.description} chars
+                    <span
+                      className={`text-[10px] sm:text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md ${
+                        activeVariation.characterCounts.description <= 580
+                          ? 'bg-[#d9f3e1] text-[#1aae39]'
+                          : activeVariation.characterCounts.description <= 600
+                          ? 'bg-[#fef3c7] text-[#92400e]'
+                          : 'bg-[#fee2e2] text-[#dc2626]'
+                      }`}
+                      title="Strict Pinterest safe limit is under 600 characters"
+                    >
+                      {activeVariation.characterCounts.description} / 600 max
                     </span>
                     <button
-                      onClick={() => copyToClipboard(result.description, 'description')}
+                      onClick={() => copyToClipboard(activeVariation.description, 'description')}
                       className="p-1.5 hover:bg-[#f6f5f4] rounded text-[#5d5b54] hover:text-[#5645d4] transition-colors cursor-pointer"
                       title="Copy Description"
                     >
@@ -407,7 +551,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                   </div>
                 </div>
                 <p className="text-xs text-[#37352f] bg-[#fafaf9] p-3 rounded-lg border border-[#ede9e4] leading-relaxed select-all">
-                  {result.description}
+                  {activeVariation.description}
                 </p>
 
                 {/* Keywords Matched Pill List */}
@@ -500,12 +644,21 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                         Save
                       </div>
                     </div>
+
+                    {/* Active Variation Tag */}
+                    {currentVariations.length > 1 && (
+                      <div className="absolute top-2.5 left-2.5">
+                        <div className="px-2.5 py-0.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold rounded-full shadow-xs">
+                          Version {activeVariationIndex + 1}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Pin Metadata Info */}
                   <div className="p-3 text-left">
                     <h4 className="font-semibold text-xs text-[#1a1a1a] line-clamp-2 mb-1 leading-snug">
-                      {result.title}
+                      {activeVariation.title}
                     </h4>
 
                     {/* Native Visit Site Button (Matches Real Pinterest Link Pin) */}
@@ -518,7 +671,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                     )}
 
                     <p className="text-[11px] text-[#787671] line-clamp-3 sm:line-clamp-4 leading-relaxed mb-2">
-                      {result.description}
+                      {activeVariation.description}
                     </p>
 
                     <div className="flex items-center justify-between pt-2 border-t border-[#f6f5f4]">

@@ -1,4 +1,4 @@
-import type { GenerationInput, PinterestSeoResult, ArigatoSiteSeoResult, ApiConfig, GrabTextResult } from '../types/seo';
+import type { GenerationInput, PinterestSeoResult, PinterestVariation, ArigatoSiteSeoResult, ApiConfig, GrabTextResult } from '../types/seo';
 import { getStoredApiConfig } from '../utils/storage';
 import Tesseract from 'tesseract.js';
 
@@ -21,6 +21,62 @@ export const enforceCharLimit = (text: string, maxChars: number): string => {
   const sliced = text.slice(0, maxChars);
   const lastSpace = sliced.lastIndexOf(' ');
   return (lastSpace > 0 ? sliced.slice(0, lastSpace) : sliced).trim();
+};
+
+/**
+ * Trims text strictly to maxChars while cleanly preserving full sentence boundaries.
+ * Guarantees output is <= maxChars.
+ */
+export const enforceSentenceCharLimit = (text: string, maxChars: number): string => {
+  if (!text || text.length <= maxChars) return text;
+  const sliced = text.slice(0, maxChars);
+
+  // Look for the last sentence terminator (. ! ?)
+  const lastPeriod = Math.max(
+    sliced.lastIndexOf('. '),
+    sliced.lastIndexOf('.\n'),
+    sliced.lastIndexOf('! '),
+    sliced.lastIndexOf('? ')
+  );
+
+  if (lastPeriod > maxChars * 0.5) {
+    return sliced.slice(0, lastPeriod + 1).trim();
+  }
+
+  // Fallback to word boundary
+  const lastSpace = sliced.lastIndexOf(' ');
+  const cleanWord = (lastSpace > 0 ? sliced.slice(0, lastSpace) : sliced).trim();
+  return cleanWord.endsWith('.') ? cleanWord : `${cleanWord}.`;
+};
+
+/**
+ * Smartly weaves 1 or 2 high-intent target/pinned keywords into a fluid, human sentence.
+ * Strictly avoids repetitive comma dumping or keyword stuffing.
+ */
+export function buildSmartKeywordSentence(pinnedKws: string[] = [], activeKws: string[] = []): string {
+  const pool = [...pinnedKws, ...activeKws]
+    .map((k) => k.trim())
+    .filter((k) => k.length > 2);
+
+  const unique: string[] = [];
+  for (const item of pool) {
+    if (!unique.some((u) => u.toLowerCase() === item.toLowerCase())) {
+      unique.push(item);
+    }
+  }
+
+  if (unique.length === 0) {
+    return 'Ideal for creating romantic couple selfies and aesthetic photography poses.';
+  }
+
+  const primary = unique[0].replace(/^#/, '');
+  const secondary = unique.length > 1 ? unique[1].replace(/^#/, '') : null;
+
+  if (secondary && !primary.toLowerCase().includes(secondary.toLowerCase()) && !secondary.toLowerCase().includes(primary.toLowerCase())) {
+    return `Ideal for anyone looking for ${primary} or aesthetic ${secondary} with candid romance.`;
+  }
+
+  return `A must-try ${primary} for romantic couple selfies and candid photography ideas.`;
 };
 
 /**
@@ -201,60 +257,53 @@ export function generateSmartKeywords(input: GenerationInput): string[] {
   return finalKws.slice(0, 9);
 }
 
+function rotateArray<T>(arr: T[], offset: number): T[] {
+  if (arr.length <= 1) return arr;
+  const k = offset % arr.length;
+  return [...arr.slice(k), ...arr.slice(0, k)];
+}
+
 /**
- * Smart synthesis generator for Pinterest SEO (Dual-Mode: With Link vs Google Search Steps)
- * Accurately models the user's two proven Pinterest publishing strategies:
- * 1. "with_link": Sensual/lovely title + emoji + " | Click Visit Site for Prompt" + viral photo idea description.
- * 2. "search_steps": Sensual/lovely title + emoji + " | Gemini Couple Photo" + 4-step Google search guide.
+ * Generates 2 to 5 distinct, high-converting Pinterest variations (Titles & Descriptions)
+ * for the user's pins with natural keyword rotation and strict <600 chars limit.
  */
-export function generateSmartPinterestSeo(input: GenerationInput): {
-  title: string;
-  description: string;
-  tags: string[];
-  recommendedBoard: string;
-} {
+export function buildSmartPinterestVariations(
+  input: GenerationInput,
+  count: number = 2
+): PinterestVariation[] {
   const format = input.pinterestFormat || 'with_link';
   const promptLower = (input.prompt || '').toLowerCase();
   const pinnedKws = input.pinnedKeywords || [];
   const otherKws = input.activeKeywords.filter((k) => !pinnedKws.includes(k));
+  const allKeywords = [...pinnedKws, ...otherKws];
 
-  // Determine lovely / sensual / playful scene hook, emoji, and pose details
-  let hook = '';
-  let emoji = '✨';
-  let poseDetails = '';
+  let baseHook = 'Romantic Couple Prompt';
+  let basePose = 'an authentic romantic connection and candid unposed chemistry';
 
   if (/kiss/i.test(promptLower)) {
-    hook = 'Elevator Kiss Couple Prompt';
-    emoji = '💋';
-    poseDetails = 'a natural kissing moment with a cinematic vibe';
+    baseHook = 'Elevator Kiss Couple Prompt';
+    basePose = 'a natural kissing moment with a cinematic vibe';
   } else if (/moustache|mustache|hair/i.test(promptLower)) {
-    hook = 'Funny Couple Hair Moustache Prompt';
-    emoji = '😂';
-    poseDetails = "a playful pout pose with the boy creating a fake moustache using the girl's hair";
+    baseHook = 'Funny Couple Hair Moustache Prompt';
+    basePose = "a playful pout pose with the boy creating a fake moustache using the girl's hair";
   } else if (/cheek|squish/i.test(promptLower)) {
-    hook = 'Intimate Cheek Squish Couple Prompt';
-    emoji = '✨';
-    poseDetails = "one partner tenderly squishing the other's cheek in an affectionate candid smile";
+    baseHook = 'Intimate Cheek Squish Couple Prompt';
+    basePose = "one partner tenderly squishing the other's cheek in an affectionate candid smile";
   } else if (/eye|cover|blindfold/i.test(promptLower)) {
-    hook = 'Playful Eye Cover Couple Prompt';
-    emoji = '💕';
-    poseDetails = "the woman playfully covering her partner's eyes from behind in an unscripted series";
+    baseHook = 'Playful Eye Cover Couple Prompt';
+    basePose = "the woman playfully covering her partner's eyes from behind in an unscripted series";
   } else if (/hug|cuddle|embrace/i.test(promptLower)) {
-    hook = 'Romantic Embrace Couple Prompt';
-    emoji = '🤍';
-    poseDetails = 'an intimate, cozy embrace filled with tender chemistry and warmth';
+    baseHook = 'Romantic Embrace Couple Prompt';
+    basePose = 'an intimate, cozy embrace filled with tender chemistry and warmth';
   } else if (/balcony|terrace|sunset/i.test(promptLower)) {
-    hook = 'Sunset Balcony Couple Prompt';
-    emoji = '🌅';
-    poseDetails = 'the couple leaning close against the railing in soft golden hour lighting';
+    baseHook = 'Sunset Balcony Couple Prompt';
+    basePose = 'the couple leaning close against the railing in soft golden hour lighting';
   } else if (/cafe|coffee|table/i.test(promptLower)) {
-    hook = 'Cozy Cafe Couple Prompt';
-    emoji = '☕';
-    poseDetails = 'an intimate cafe table conversation with genuine eye contact and laughter';
+    baseHook = 'Cozy Cafe Couple Prompt';
+    basePose = 'an intimate cafe table conversation with genuine eye contact and laughter';
   } else if (/elevator|lift/i.test(promptLower)) {
-    hook = 'Elevator Couple Selfie Prompt';
-    emoji = '📸';
-    poseDetails = 'an impromptu elevator mirror selfie with authentic smartphone realism';
+    baseHook = 'Elevator Couple Selfie Prompt';
+    basePose = 'an impromptu elevator mirror selfie with authentic smartphone realism';
   } else {
     const topicWords = (input.prompt || '')
       .replace(/[^\w\s]/gi, '')
@@ -262,50 +311,106 @@ export function generateSmartPinterestSeo(input: GenerationInput): {
       .filter((w) => w.length > 3)
       .slice(0, 3);
     const mainSubject = topicWords.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Romantic Couple';
-    hook = `${mainSubject} Couple Prompt`;
-    emoji = '💋';
-    poseDetails = 'an authentic romantic connection and candid unposed chemistry';
+    baseHook = `${mainSubject} Couple Prompt`;
   }
 
-  // 1. Compose Title
-  let title = '';
-  if (format === 'with_link') {
-    title = `${hook} ${emoji} | Click Visit Site for Prompt`;
-  } else {
-    const secondaryKw = otherKws[0] || 'Gemini Couple Photo';
-    const cleanSecondary = secondaryKw.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    title = `${hook} ${emoji} | ${cleanSecondary}`;
-  }
-  title = enforceCharLimit(title, 80);
+  const variationsConfig = [
+    {
+      titlePrefix: baseHook,
+      emoji: '💋',
+      secondarySuffix: otherKws[0] || 'Gemini Couple Photo',
+      getDescLink: (sent: string) =>
+        `This ${baseHook.toLowerCase()} is a viral AI photo idea for romantic and realistic couple selfies. Recreate ${basePose}. ${sent} Click visit site for the full prompt recreation!`,
+      getDescSteps: (sent: string) =>
+        `How to get this prompt: 1. Search "Arigato Devan" on Google. 2. Open the Arigato Devan website. 3. Browse trending Gemini couple prompts & photo ideas. 4. Find this prompt and create your image! This ${baseHook.toLowerCase()} captures ${basePose}. ${sent}`,
+    },
+    {
+      titlePrefix: baseHook.replace(/Prompt$/i, 'Mirror Selfie Pose').trim(),
+      emoji: '✨',
+      secondarySuffix: otherKws[1] || 'Couple Aesthetic Ideas',
+      getDescLink: (sent: string) =>
+        `Looking for aesthetic couple photography poses? This ${baseHook.toLowerCase()} captures ${basePose} with authentic smartphone realism. ${sent} Visit site to copy the complete prompt!`,
+      getDescSteps: (sent: string) =>
+        `Want this AI prompt? 1. Go to Google and search "Arigato Devan". 2. Click the official Arigato Devan site. 3. Explore realistic couple prompts & viral photo ideas. 4. Copy this prompt and generate your picture! Recreate ${basePose}. ${sent}`,
+    },
+    {
+      titlePrefix: `Candid ${baseHook}`.replace(/Prompt$/i, 'Photo Idea').trim(),
+      emoji: '💕',
+      secondarySuffix: otherKws[2] || 'Romantic Couple Prompt',
+      getDescLink: (sent: string) =>
+        `Create authentic romantic moments with this viral ${baseHook.toLowerCase()}. Features ${basePose} with natural unposed chemistry. ${sent} Click visit site to get the prompt!`,
+      getDescSteps: (sent: string) =>
+        `Steps to get this prompt: 1. Search "Arigato Devan" on Google. 2. Visit the Arigato Devan website. 3. Check out the latest Gemini AI couple prompts. 4. Use this prompt for your artwork! Features ${basePose}. ${sent}`,
+    },
+    {
+      titlePrefix: `Viral Gemini ${baseHook}`.trim(),
+      emoji: '🔥',
+      secondarySuffix: otherKws[3] || 'Couple Selfie Poses',
+      getDescLink: (sent: string) =>
+        `A must-try couple prompt for realistic smartphone realism! Recreate ${basePose} with genuine warmth. ${sent} Tap visit site for the full prompt details!`,
+      getDescSteps: (sent: string) =>
+        `How to find this prompt: 1. Search "Arigato Devan" on Google. 2. Open the Arigato Devan website. 3. Discover aesthetic couple photo prompts. 4. Generate your own romantic couple portrait! Captures ${basePose}. ${sent}`,
+    },
+    {
+      titlePrefix: `Sweet Everyday ${baseHook}`.trim(),
+      emoji: '🤍',
+      secondarySuffix: otherKws[4] || 'AI Photography Prompt',
+      getDescLink: (sent: string) =>
+        `Elevate your couple photos with this cinematic ${baseHook.toLowerCase()}. Showcases ${basePose} in gorgeous lighting. ${sent} Visit site now to view and copy the prompt!`,
+      getDescSteps: (sent: string) =>
+        `Quick guide for this prompt: 1. Search "Arigato Devan" in Google. 2. Enter the Arigato Devan site. 3. Browse trending romantic couple prompts. 4. Copy prompt and create your photo! Shows ${basePose}. ${sent}`,
+    },
+  ];
 
-  // 2. Compose Description
-  let description = '';
-  if (format === 'with_link') {
-    const pinnedText = pinnedKws.length > 0 ? `Featuring ${pinnedKws.join(', ')}.` : '';
-    description = `This ${hook.toLowerCase()} is a viral AI photo idea for romantic and realistic couple selfies. Perfect for mirror selfie poses and couple photography. Recreate ${poseDetails}. ${pinnedText} Click visit site for the full prompt recreation!`.replace(/\s+/g, ' ').trim();
-  } else {
-    // Mode 2: Search Steps Guide
-    const targetTags = [
-      'couple photo',
-      'couple selfie',
-      'couple pictures',
-      'couple aesthetic',
-      'couple prompts for photos',
-      ...pinnedKws.map((k) => k.toLowerCase()),
-    ];
-    const uniqueTags = Array.from(new Set(targetTags));
-    let tagListString = '';
-    if (uniqueTags.length > 1) {
-      const lastTag = uniqueTags.pop();
-      tagListString = `${uniqueTags.join(', ')}, and ${lastTag}`;
+  const results: PinterestVariation[] = [];
+  const safeCount = Math.min(Math.max(count, 2), 5);
+
+  for (let i = 0; i < safeCount; i++) {
+    const cfg = variationsConfig[i % variationsConfig.length];
+
+    let title = '';
+    if (format === 'with_link') {
+      title = `${cfg.titlePrefix} ${cfg.emoji} | Click Visit Site for Prompt`;
     } else {
-      tagListString = uniqueTags[0] || 'couple photo ideas';
+      const cleanSec = cfg.secondarySuffix.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      title = `${cfg.titlePrefix} ${cfg.emoji} | ${cleanSec}`;
     }
+    title = enforceCharLimit(title, 80);
 
-    description = `How to get this prompt: 1. Go to Google and search "Arigato Devan". 2. Visit the Arigato Devan website. 3. Explore lots of couple prompts, Gemini prompts, and couple photo ideas. 4. Find this prompt and use it to create your own image. This ${hook.toLowerCase()} shows ${poseDetails}. Perfect for ${tagListString}.`;
+    const rotatedPinned = rotateArray(pinnedKws, i);
+    const rotatedActive = rotateArray(allKeywords, i * 2);
+    const smartSentence = buildSmartKeywordSentence(rotatedPinned, rotatedActive);
+
+    let description = format === 'with_link' ? cfg.getDescLink(smartSentence) : cfg.getDescSteps(smartSentence);
+    description = enforceSentenceCharLimit(description.replace(/\s+/g, ' ').trim(), 580);
+
+    results.push({
+      id: i + 1,
+      title,
+      description,
+      characterCounts: {
+        title: title.length,
+        description: description.length,
+      },
+    });
   }
 
-  // 3. Compose Tags
+  return results;
+}
+
+/**
+ * Smart synthesis generator for Pinterest SEO (Dual-Mode: With Link vs Google Search Steps)
+ */
+export function generateSmartPinterestSeo(input: GenerationInput): {
+  title: string;
+  description: string;
+  tags: string[];
+  recommendedBoard: string;
+  variations: PinterestVariation[];
+} {
+  const variations = buildSmartPinterestVariations(input, input.variationCount || 2);
+  const pinnedKws = input.pinnedKeywords || [];
+
   const topicWords = (input.prompt || '')
     .replace(/[^\w\s]/gi, '')
     .split(/\s+/)
@@ -327,10 +432,11 @@ export function generateSmartPinterestSeo(input: GenerationInput): {
   const tags = Array.from(new Set(baseTags)).slice(0, 10);
 
   return {
-    title,
-    description,
+    title: variations[0].title,
+    description: variations[0].description,
     tags,
     recommendedBoard: 'Kiss Prompts For Gemini AI | Couple Prompts',
+    variations,
   };
 }
 
@@ -397,6 +503,7 @@ export async function generatePinterestSeo(
       tagsCount: smart.tags.length,
     },
     recommendedBoard: smart.recommendedBoard,
+    variations: smart.variations,
   };
 }
 
@@ -517,32 +624,51 @@ async function executeCustomPinterestApi(input: GenerationInput, config: ApiConf
 
   const format = input.pinterestFormat || 'with_link';
 
+  const requestedVariations = Math.min(Math.max(input.variationCount || 2, 2), 5);
+
   const systemContent = `You are an elite Pinterest SEO expert for Arigato Labs.
 Analyze the user's prompt and creative details to generate a high-converting Pinterest SEO pin package.
 
 PINTEREST STRATEGY MODE: ${format === 'with_link' ? 'WITH WEBSITE LINK (DIRECT CTR)' : 'GOOGLE SEARCH STEPS (ORGANIC FUNNEL)'}
 
 MANDATORY RULES:
-1. PIN TITLE: Catchy, lovely, sensual and keyword-rich (40 to 80 characters). Must include a relevant romantic/expressive emoji (e.g. 💋, ✨, 🤍, 🔥, 😂, 💕).
+1. PIN TITLE: Catchy, lovely, sensual and keyword-rich (strictly 40 to 80 characters). Must include a relevant romantic/expressive emoji (e.g. 💋, ✨, 🤍, 🔥, 😂, 💕).
    ${format === 'with_link'
      ? '- MUST END WITH: " | Click Visit Site for Prompt" (e.g. "Elevator Kiss Couple Prompt 💋 | Click Visit Site for Prompt")'
      : '- MUST END WITH: " | Gemini Couple Photo" or a high-volume secondary keyword (e.g. "Funny Couple Hair Moustache Prompt 😂 | Gemini Couple Photo")'}
 
-2. DESCRIPTION:
+2. DESCRIPTION: MUST BE STRICTLY UNDER 600 CHARACTERS (target 380 to 520 characters, NEVER exceed 580 characters).
+   CRITICAL ANTI-KEYWORD-STUFFING RULE:
+   - ABSOLUTELY NEVER append a comma-separated list of keywords (e.g. NEVER write "Perfect for couple photo, couple selfie, couple pictures, couple aesthetic...").
+   - Instead, integrate 1 or 2 target keywords SMARTLY into a fluid, human, grammatically complete sentence.
    ${format === 'with_link'
-     ? '- Format as a viral AI photo idea: "This [topic] prompt is a viral AI photo idea for romantic and realistic couple selfies. Perfect for [poses] and couple photography. Recreate [moment] with a cinematic vibe. [Weave all pinned keywords naturally]. Click visit site for the full prompt!"'
-     : '- Must start with the exact 4-step Google discovery guide:\n"How to get this prompt: 1. Go to Google and search \\"Arigato Devan\\". 2. Visit the Arigato Devan website. 3. Explore lots of couple prompts, Gemini prompts, and couple photo ideas. 4. Find this prompt and use it to create your own image. This [topic] prompt shows [candid/romantic pose details]. Perfect for [comma-separated target keywords: couple photo, couple selfie, couple pictures, couple aesthetic, couple prompts for photos, and all pinned keywords]."'
+     ? `- Structure (Under 520 chars):
+       1. Describe the scene/pose as a viral AI photo idea with romantic chemistry and natural lighting.
+       2. Weave 1-2 target keywords naturally (e.g. "Ideal for anyone looking for [Keyword 1] or aesthetic [Keyword 2] with candid romance.").
+       3. End with: "Click visit site for the full prompt recreation!"`
+     : `- Structure (Under 520 chars):
+       1. Start with the concise 4-step Google guide:
+       "How to get this prompt: 1. Search \\"Arigato Devan\\" on Google. 2. Open the Arigato Devan website. 3. Browse trending Gemini couple prompts & photo ideas. 4. Find this prompt and create your image!"
+       2. Follow with the visual description and smart keyword integration:
+       "This [topic] prompt captures [candid pose details]. Ideal for creating [Keyword 1] and aesthetic [Keyword 2] with cinematic warmth."`
    }
 
 3. TAGS: Array of 8 to 10 viral search tags starting with #.
 4. RECOMMENDED BOARD: Relevant board name (e.g. "Kiss Prompts For Gemini AI | Couple Prompts").
 
-PINNED KEYWORDS (MANDATORY): ${input.pinnedKeywords?.join(', ') || 'None'}
-ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.join(', ')}
+5. VARIATIONS (MANDATORY): Generate exactly ${requestedVariations} distinct variations for A/B testing pins.
+   Each item in "variations" must have:
+   - "title": Distinct angle with relevant romantic emoji and appropriate suffix (strictly 40 to 80 chars).
+   - "description": Distinct description under 580 characters with natural keyword weaving.
 
-OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "title", "description", "tags", "recommendedBoard". Do NOT include markdown fences or think tags in the JSON.`;
+PINNED KEYWORDS (Integrate 1-2 naturally in sentence, DO NOT DUMP AS A LIST): ${input.pinnedKeywords?.join(', ') || 'None'}
+ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.slice(0, 6).join(', ')}
 
-  const userTextPrompt = `Create high-converting ${format === 'with_link' ? 'With Link' : 'Search Steps'} Pinterest SEO assets for:\nPrompt: "${input.prompt || 'Aesthetic Visual Art'}"\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nConfigured Keywords: ${input.activeKeywords.join(', ')}`;
+OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "title", "description", "tags", "recommendedBoard", "variations".
+"variations" must be an array of exactly ${requestedVariations} items: [ { "title": "...", "description": "..." }, ... ]
+Do NOT include markdown fences or think tags in the JSON.`;
+
+  const userTextPrompt = `Create ${requestedVariations} distinct high-converting ${format === 'with_link' ? 'With Link' : 'Search Steps'} Pinterest SEO variations for:\nPrompt: "${input.prompt || 'Aesthetic Visual Art'}"\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nConfigured Keywords: ${input.activeKeywords.join(', ')}`;
 
   const buildPayload = (includeImage: boolean) => {
     const messages: any[] = [
@@ -633,22 +759,28 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "title", "description"
   }
   title = enforceCharLimit(title, 80);
 
-  // Fail-safe description check
+  const pinnedKws = input.pinnedKeywords || [];
+
+  // Fail-safe description check & anti-stuffing enforcement
   if (!description || typeof description !== 'string' || description.trim().length < 20) {
     description = smartBackup.description;
   } else {
+    // If search_steps mode was chosen but AI failed to include the 4 steps, use smartBackup
     if (format === 'search_steps' && !description.toLowerCase().includes('how to get this prompt')) {
       description = smartBackup.description;
     }
-  }
 
-  // Ensure all pinned keywords are inside description
-  const pinnedKws = input.pinnedKeywords || [];
-  for (const pk of pinnedKws) {
-    if (!description.toLowerCase().includes(pk.toLowerCase())) {
-      description = `${description} ${pk}.`;
+    // Anti-stuffing cleanup: If the model generated a comma-separated list like "Perfect for a, b, c, d..."
+    if (description.includes('Perfect for') && description.split(',').length > 3) {
+      const cutIndex = description.indexOf('Perfect for');
+      const basePart = description.slice(0, cutIndex).trim();
+      const smartSentence = buildSmartKeywordSentence(pinnedKws, input.activeKeywords);
+      description = `${basePart} ${smartSentence}`;
     }
   }
+
+  // Hard safety limit: strictly under 600 characters (max 580 chars)
+  description = enforceSentenceCharLimit(description, 580);
 
   // Process tags
   let tags: string[] = [];
@@ -675,17 +807,91 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "title", "description"
 
   const selectedKeywords = Array.from(new Set([...pinnedKws, ...input.activeKeywords])).slice(0, 4);
 
+  // Variations extraction & sanitization
+  let parsedVariations: PinterestVariation[] = [];
+  if (Array.isArray(parsed.variations) && parsed.variations.length > 0) {
+    parsedVariations = parsed.variations
+      .slice(0, requestedVariations)
+      .map((v: any, idx: number) => {
+        let vTitle = typeof v.title === 'string' ? v.title.trim() : '';
+        let vDesc = typeof v.description === 'string' ? v.description.trim() : '';
+
+        if (!vTitle || vTitle.length < 5) {
+          vTitle = smartBackup.variations?.[idx]?.title || smartBackup.title;
+        } else {
+          if (format === 'with_link' && !vTitle.toLowerCase().includes('visit site')) {
+            vTitle = `${vTitle.replace(/\s*\|.*$/, '').trim()} | Click Visit Site for Prompt`;
+          } else if (format === 'search_steps' && !vTitle.includes('|')) {
+            vTitle = `${vTitle.trim()} | Gemini Couple Photo`;
+          }
+        }
+        vTitle = enforceCharLimit(vTitle, 80);
+
+        if (!vDesc || vDesc.length < 20) {
+          vDesc = smartBackup.variations?.[idx]?.description || smartBackup.description;
+        } else {
+          if (
+            format === 'search_steps' &&
+            !vDesc.toLowerCase().includes('how to get this prompt') &&
+            !vDesc.toLowerCase().includes('search')
+          ) {
+            vDesc = smartBackup.variations?.[idx]?.description || smartBackup.description;
+          }
+          if (vDesc.includes('Perfect for') && vDesc.split(',').length > 3) {
+            const cutIndex = vDesc.indexOf('Perfect for');
+            const basePart = vDesc.slice(0, cutIndex).trim();
+            const smartSentence = buildSmartKeywordSentence(pinnedKws, input.activeKeywords);
+            vDesc = `${basePart} ${smartSentence}`;
+          }
+        }
+        vDesc = enforceSentenceCharLimit(vDesc, 580);
+
+        return {
+          id: idx + 1,
+          title: vTitle,
+          description: vDesc,
+          characterCounts: {
+            title: vTitle.length,
+            description: vDesc.length,
+          },
+        };
+      });
+  }
+
+  // If parsedVariations is empty or has fewer than requestedVariations, top up with smartBackup.variations
+  const finalVariations: PinterestVariation[] = [...parsedVariations];
+  if (smartBackup.variations) {
+    for (let i = finalVariations.length; i < requestedVariations; i++) {
+      if (smartBackup.variations[i]) {
+        finalVariations.push(smartBackup.variations[i]);
+      }
+    }
+  }
+
+  if (finalVariations.length === 0) {
+    finalVariations.push({
+      id: 1,
+      title,
+      description,
+      characterCounts: {
+        title: title.length,
+        description: description.length,
+      },
+    });
+  }
+
   return {
-    title,
-    description,
+    title: finalVariations[0].title,
+    description: finalVariations[0].description,
     tags,
     keywordsMatched: selectedKeywords,
     characterCounts: {
-      title: title.length,
-      description: description.length,
+      title: finalVariations[0].title.length,
+      description: finalVariations[0].description.length,
       tagsCount: tags.length,
     },
     recommendedBoard,
+    variations: finalVariations,
   };
 }
 
