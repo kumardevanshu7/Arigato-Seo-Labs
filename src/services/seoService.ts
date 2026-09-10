@@ -210,6 +210,8 @@ export function partitionArigatoSiteKeywords(input: GenerationInput): ArigatoSit
 
 /**
  * Smart Dynamic Synthesis for "About this prompt" (Strictly < 199 words, 4 cohesive paragraphs)
+ * Written in simple, warm, human English explaining what you see in the prompt,
+ * with natural details and a friendly CTA to copy, try, and have fun.
  * Weaves ALL 10 TARGET KEYWORDS (5 pinned + 5 random unpinned) into fluent, human sentences.
  */
 export function generateSmartAboutPrompt(
@@ -220,43 +222,43 @@ export function generateSmartAboutPrompt(
   const kws = parts.aboutKeywords;
   const pLower = (input.prompt || '').toLowerCase();
 
-  // Dynamic scene & mood detection
-  let sceneDesc = 'an intimate, candid couple portrait';
+  // Friendly scene descriptor
+  let sceneTitle = 'a spontaneous, romantic candid couple portrait';
   if (/3-frame|three.*frame|strip|collage|series/i.test(pLower)) {
-    sceneDesc = 'an intimate, spontaneous vertical 3-frame selfie series';
+    sceneTitle = 'a super cute vertical 3-frame selfie series';
   } else if (/elevator|lift/i.test(pLower)) {
-    sceneDesc = 'an intimate, spontaneous elevator mirror portrait';
+    sceneTitle = 'a spontaneous elevator mirror selfie';
   } else if (/cafe|coffee/i.test(pLower)) {
-    sceneDesc = 'a cozy, spontaneous cafe date setting';
+    sceneTitle = 'a cozy coffee date portrait';
   } else if (/balcony|rooftop/i.test(pLower)) {
-    sceneDesc = 'a serene, open balcony portrait with soft morning daylight';
-  } else if (/street|city|neon|tokyo/i.test(pLower)) {
-    sceneDesc = 'a vibrant, spontaneous urban candid portrait';
+    sceneTitle = 'a relaxed open balcony moment';
+  } else if (/street|city/i.test(pLower)) {
+    sceneTitle = 'a candid street style portrait';
   }
 
-  // Extract custom styling hints from user prompt
-  let stylingDetail = 'Clothing and styling remain grounded in everyday authenticity';
+  // Friendly outfit descriptor
+  let outfitDesc = 'casual everyday outfits with natural fabric creases';
   if (/kurta/i.test(pLower)) {
-    stylingDetail = 'Styling features authentic textured kurtas with realistic fabric weaves and subtle creases';
+    outfitDesc = 'authentic textured kurtas with realistic fabric folds';
   } else if (/saree|sari/i.test(pLower)) {
-    stylingDetail = 'Styling features an elegant traditional saree with authentic fabric drape and delicate accessories';
+    outfitDesc = 'an elegant traditional saree with authentic drape';
   } else if (/naruto|graphic|tee|t-shirt/i.test(pLower)) {
-    stylingDetail = 'Styling features casual everyday streetwear with realistic cotton weaves and natural fabric folds';
+    outfitDesc = 'casual everyday tees with relaxed cotton textures';
   } else if (/dress|crochet/i.test(pLower)) {
-    stylingDetail = 'Styling features authentic textured casual wear with delicate stitch details and soft folds';
+    outfitDesc = 'a charming casual dress with lovely everyday styling';
   }
 
-  // Paragraph 1: Scene & Candid Pose (weaves kws[0], kws[1], kws[2])
-  const p1 = `This creative photography specification brings to life ${sceneDesc} optimized for ${kws[0] || 'realistic couple prompt'} and ${kws[1] || 'gemini couple prompt'}. Featuring spontaneous closeness, genuine eye contact, and playful unposed chemistry, the composition captures authentic ${kws[2] || 'couple photo'} with unscripted romantic warmth.`;
+  // Para 1: What you see in the prompt (simple, warm, human)
+  const p1 = `If you want a cute, realistic photo idea, this prompt creates ${sceneTitle} for ${kws[0] || 'realistic couple prompt'} and ${kws[1] || 'gemini couple prompt'}. You get to see two people sharing candid closeness, genuine eye contact, and playful chemistry that brings ${kws[2] || 'couple photo'} to life with authentic romance.`;
 
-  // Paragraph 2: Facial Realism & Strict Identity Preservation (weaves kws[3], kws[4])
-  const p2 = `Strict facial identity preservation is maintained as the highest priority for ${kws[3] || 'couple aesthetic'}, faithfully retaining reference facial structure, authentic eye contours, natural asymmetry, and lifelike skin pores. Avoiding synthetic beautification or artificial smoothing ensures true-to-life realism for ${kws[4] || 'realistic couple prompt'}.`;
+  // Para 2: Details on facial realism & natural features
+  const p2 = `What makes this prompt special is how naturally it captures real facial features for ${kws[3] || 'couple aesthetic'} and ${kws[4] || 'realistic couple prompt'}. Instead of fake AI smoothing, it preserves authentic skin texture, natural smile lines, and true-to-life expressions with complete realism.`;
 
-  // Paragraph 3: Outfits, Styling & Everyday Texture (weaves kws[5], kws[6])
-  const p3 = `${stylingDetail} tailored for ${kws[5] || 'trending prompt girls'}, capturing organic fabric weaves, soft creases, and understated accessories. Every frame reflects unposed styling tailored for ${kws[6] || 'trending prompt boys'} with zero synthetic perfection.`;
+  // Para 3: Outfits, lighting & smartphone feel
+  const p3 = `The styling stays relaxed with ${outfitDesc} tailored for ${kws[5] || 'trending prompt girls'} and ${kws[6] || 'trending prompt boys'}. Combined with soft ambient lighting and candid mobile camera vibes, it creates an effortless look for ${kws[7] || 'candid couple photo'} and ${kws[8] || 'couple selfie poses'}.`;
 
-  // Paragraph 4: Lighting, Smartphone Realism & Romance (weaves kws[7], kws[8], kws[9])
-  const p4 = `Soft natural ambient lighting, subtle exposure variations, and mobile camera sensor softness elevate this visual for ${kws[7] || 'candid couple photo'} and ${kws[8] || 'couple selfie poses'}. Ideal for anyone exploring ${kws[9] || 'smartphone couple photo'}, it provides a sweet, memorable way to capture everyday romance in an authentic smartphone snapshot.`;
+  // Para 4: Friendly call to action (try it, copy it, have fun!)
+  const p4 = `Whether you want to try ${kws[9] || 'smartphone couple photo'} or make sweet couple memories, this prompt is ready. Just copy the prompt above, try it in your AI generator, and have fun creating your own viral couple photos!`;
 
   const fullPrompt = `${p1}\n\n${p2}\n\n${p3}\n\n${p4}`;
   return enforceWordLimit(fullPrompt, 199);
@@ -945,8 +947,13 @@ async function executeCustomSiteApi(
   const headers = buildAuthHeaders(config);
   const endpoint = resolveApiUrl(config);
 
-  const systemContent = `You are the dedicated Google SEO & AI Prompt Specialist for Arigato Site SEO Studio (Arigato Labs).
-Your task is to analyze the user's prompt text and reference visual to generate a production-ready image recreation specification, a high-converting Google SERP meta description, and 9 SEO tags.
+  const systemContent = `You are a friendly, creative AI prompt curator and blogger at Arigato Labs.
+Your task is to analyze the user's prompt text and reference visual to write an engaging, simple, human-style "About this prompt" guide, a click-worthy Google SERP meta description, and 9 SEO tags.
+
+TONE & WRITING STYLE:
+- Write in simple, warm, conversational, human English (like an enthusiastic creator sharing an awesome prompt with friends on a blog).
+- DO NOT sound like a robotic system specification or legal contract. NEVER use stiff phrases like "This creative photography specification...", "Strict facial identity preservation is maintained as the highest priority...", etc.
+- No plagiarism: Write with 100% original, fresh human energy.
 
 ENVIRONMENT NOTICE:
 This is for "Arigato Site SEO" (NOT Pinterest). Do NOT generate Pinterest board recommendations, Pinterest pin titles, or Pinterest hashtags.
@@ -959,13 +966,13 @@ We have pre-selected the exact keywords you must use for each section:
      * 5 Pinned Keywords: ${partition.aboutPinned.join(', ')}
      * 5 Contextual Keywords: ${partition.aboutUnpinned.join(', ')}
      * Total 10 Target Keywords: ${partition.aboutKeywords.join(', ')}
-   - STRICT CONSTRAINT: Word count MUST be UNDER 199 words (target 140 to 180 words).
-   - ANTI-KEYWORD-STUFFING: ABSOLUTELY NEVER output a comma-separated list of keywords. Every keyword MUST be woven naturally into a sentence describing the scene, facial realism, styling, or smartphone photography.
+   - STRICT CONSTRAINT: Word count MUST be UNDER 199 words (target 140 to 175 words).
+   - ANTI-KEYWORD-STUFFING: ABSOLUTELY NEVER output a comma-separated list of keywords. Every keyword MUST be woven naturally into a sentence.
    - Paragraph Guidelines:
-     * Para 1 (Scene & Candid Pose): Detail the subjects, setting (e.g. 3-frame collage, cafe, elevator, room), and spontaneous affection. Weave 3 keywords naturally.
-     * Para 2 (Strict Identity Preservation): Emphasize reference facial structure, authentic eye contours, natural skin pores, avoiding beautification and AI smoothing. Weave 2 keywords naturally.
-     * Para 3 (Exact Outfits & Everyday Styling): Describe authentic clothing fabrics, creases, and unposed styling. Weave 2 keywords naturally.
-     * Para 4 (Lighting, Smartphone Camera Realism & Romance): Describe natural ambient lighting, mobile camera sensor softness, and everyday romance. Weave 3 keywords naturally.
+     * Para 1 (What you see in the prompt): Tell the reader in simple English what they get to see in this prompt: the scene, cute poses, expressions, and romantic chemistry. (Weave 3 keywords naturally).
+     * Para 2 (Details on facial features): Explain what makes the prompt special: authentic facial features, real skin texture without fake AI smoothing, and lifelike expressions. (Weave 2 keywords naturally).
+     * Para 3 (Outfits & Lighting): Describe the relaxed styling, everyday outfits, natural fabric folds, soft ambient lighting, and candid mobile camera vibes. (Weave 2 keywords naturally).
+     * Para 4 (Friendly Call-To-Action): Conclude with a warm, human invitation telling the reader to copy the prompt, try it in their AI generator, and have fun creating their own viral couple photos! (Weave 3 keywords naturally).
 
 2. "seoDescription" (3 MANDATORY KEYWORDS):
    - STRICT CONSTRAINT: MUST BE STRICTLY UNDER 160 CHARACTERS (target 130 to 155 characters).
