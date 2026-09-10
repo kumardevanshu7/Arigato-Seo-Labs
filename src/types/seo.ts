@@ -60,6 +60,7 @@ export interface GenerationInput {
   pinnedKeywords?: string[]; // 📌 Mandatory keywords that MUST appear in descriptions
   pinterestFormat?: 'with_link' | 'search_steps'; // Dual-mode for Pinterest: With Link CTA vs Google Search Steps
   variationCount?: number; // Desired number of pin variations (2, 3, 4, 5 - default 2)
+  subjectFocus?: 'auto' | 'solo_female' | 'solo_male' | 'couple' | 'portrait'; // Subject detection override
 }
 
 export interface GenerationState {

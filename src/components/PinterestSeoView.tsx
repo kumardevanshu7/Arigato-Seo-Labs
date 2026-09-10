@@ -33,6 +33,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
   const [variationCount, setVariationCount] = useState<number>(2);
   const [activeVariationIndex, setActiveVariationIndex] = useState<number>(0);
 
+  const [subjectFocus, setSubjectFocus] = useState<'auto' | 'solo_female' | 'couple' | 'solo_male'>('auto');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressStep, setProgressStep] = useState(1);
   const [progressPercent, setProgressPercent] = useState(0);
@@ -67,6 +68,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
           pinnedKeywords,
           pinterestFormat,
           variationCount,
+          subjectFocus,
         },
         (step, percent, msg) => {
           setProgressStep(step);
@@ -183,6 +185,39 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                 }}
                 isScanning={isGenerating}
               />
+            </div>
+
+            {/* Visual Subject Detection & Focus Selector */}
+            <div className="mb-4 sm:mb-5 p-2.5 rounded-lg bg-[#fafaf9] border border-[#ede9e4]">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <label className="text-xs font-semibold text-[#37352f] flex items-center gap-1.5">
+                  <span>Visual Subject Focus</span>
+                </label>
+                <span className="text-[10px] text-[#787671]">
+                  {subjectFocus === 'auto' ? 'Auto-detecting from visual & prompt' : 'Locked to selection'}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
+                {[
+                  { id: 'auto', label: '✨ Auto' },
+                  { id: 'solo_female', label: '👩 Solo Girl' },
+                  { id: 'couple', label: '👫 Couple' },
+                  { id: 'solo_male', label: '👨 Solo Boy' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSubjectFocus(opt.id as any)}
+                    className={`py-1 px-1.5 text-[11px] rounded-md text-center transition-all cursor-pointer ${
+                      subjectFocus === opt.id
+                        ? 'bg-[#e60023] text-white shadow-xs font-semibold'
+                        : 'bg-white text-[#5d5b54] border border-[#e5e3df] hover:bg-[#f6f5f4]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Pinterest Strategy & Output Structure Selector */}

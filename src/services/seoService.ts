@@ -214,51 +214,165 @@ export function partitionArigatoSiteKeywords(input: GenerationInput): ArigatoSit
  * with natural details and a friendly CTA to copy, try, and have fun.
  * Weaves ALL 10 TARGET KEYWORDS (5 pinned + 5 random unpinned) into fluent, human sentences.
  */
-export function generateSmartAboutPrompt(
-  input: GenerationInput,
-  partition?: ArigatoSiteKeywordPartition
-): string {
-  const parts = partition || partitionArigatoSiteKeywords(input);
-  const kws = parts.aboutKeywords;
-  const pLower = (input.prompt || '').toLowerCase();
+export interface VisualAnalysis {
+  subjectType: 'solo_female' | 'solo_male' | 'couple' | 'portrait';
+  sceneTitle: string;
+  outfitDesc: string;
+  aestheticDesc: string;
+  subjectActionDesc: string;
+  photoGoal: string;
+  is1980s: boolean;
+  reversePromptText: string;
+}
 
-  // Friendly scene descriptor
-  let sceneTitle = 'a spontaneous, romantic candid couple portrait';
-  if (/3-frame|three.*frame|strip|collage|series/i.test(pLower)) {
-    sceneTitle = 'a super cute vertical 3-frame selfie series';
-  } else if (/elevator|lift/i.test(pLower)) {
-    sceneTitle = 'a spontaneous elevator mirror selfie';
-  } else if (/cafe|coffee/i.test(pLower)) {
-    sceneTitle = 'a cozy coffee date portrait';
-  } else if (/balcony|rooftop/i.test(pLower)) {
-    sceneTitle = 'a relaxed open balcony moment';
-  } else if (/street|city/i.test(pLower)) {
-    sceneTitle = 'a candid street style portrait';
+/**
+ * Intelligent Visual Reverse Prompting Engine:
+ * Analyzes the uploaded visual asset, filename, prompt text, and target keywords
+ * to accurately extract whether the subject is a solo girl, solo boy, or couple,
+ * plus the exact scene setting, outfits, and aesthetic era.
+ */
+export function analyzeVisualAndPrompt(input: GenerationInput): VisualAnalysis {
+  const promptText = (input.prompt || '').toLowerCase();
+  const fileName = (input.imageFileName || '').toLowerCase();
+  const keywordsText = (input.activeKeywords || []).concat(input.pinnedKeywords || []).join(' ').toLowerCase();
+  const allText = `${promptText} ${fileName} ${keywordsText}`;
+
+  const coupleRegex = /\b(couple|two\s*people|boyfriend|girlfriend|husband|wife|together|pair|candid\s*closeness|romantic\s*duo|kissing|hugging|intimate)\b/i;
+  const femaleRegex = /\b(girl|female|woman|lady|she|her|polka|dress|saree|skirt|bangles|bride|queen|yearbook\s*girl)\b/i;
+  const maleRegex = /\b(boy|male|man|guy|him|he|groom|king|brother|gentleman)\b/i;
+  const is1980s = /\b(1980|1986|80s|1980s|retro|vintage|film\s*grain|disposable|polaroid|analog)\b/i.test(allText);
+
+  // Subject focus determination (respect explicit override if set)
+  let subjectType: 'solo_female' | 'solo_male' | 'couple' | 'portrait' = 'couple';
+
+  if (input.subjectFocus && input.subjectFocus !== 'auto') {
+    subjectType = input.subjectFocus === 'portrait' ? 'solo_female' : input.subjectFocus;
+  } else {
+    // If prompt explicitly mentions couple
+    if (coupleRegex.test(promptText)) {
+      subjectType = 'couple';
+    } else if (femaleRegex.test(promptText + ' ' + fileName)) {
+      subjectType = 'solo_female';
+    } else if (maleRegex.test(promptText + ' ' + fileName)) {
+      subjectType = 'solo_male';
+    } else if (is1980s && (femaleRegex.test(keywordsText) || /photo-trend|trend-6|trend/i.test(fileName))) {
+      subjectType = 'solo_female';
+    } else if (coupleRegex.test(fileName)) {
+      subjectType = 'couple';
+    } else {
+      subjectType = coupleRegex.test(keywordsText) ? 'couple' : 'solo_female';
+    }
   }
 
-  // Friendly outfit descriptor
+  // Scene determination
+  let sceneTitle = 'a spontaneous, authentic portrait';
+  if (/3-frame|three.*frame|strip|collage|series/i.test(allText)) {
+    sceneTitle = subjectType === 'couple' ? 'a super cute vertical 3-frame couple selfie series' : 'a super cute vertical 3-frame selfie series';
+  } else if (/mirror|selfie|holding\s*phone/i.test(allText) || /trend-6|photo-trend/i.test(fileName)) {
+    sceneTitle = is1980s ? 'a nostalgic 1980s retro mirror selfie' : 'a spontaneous candid mirror selfie';
+  } else if (/elevator|lift/i.test(allText)) {
+    sceneTitle = 'a spontaneous elevator mirror selfie';
+  } else if (/cafe|coffee/i.test(allText)) {
+    sceneTitle = 'a cozy coffee date portrait';
+  } else if (/balcony|rooftop/i.test(allText)) {
+    sceneTitle = 'a relaxed open balcony moment';
+  } else if (/street|city/i.test(allText)) {
+    sceneTitle = 'a candid street style portrait';
+  } else if (is1980s) {
+    sceneTitle = 'a nostalgic 1980s vintage portrait';
+  } else if (subjectType === 'couple') {
+    sceneTitle = 'a spontaneous, romantic candid couple portrait';
+  }
+
+  // Outfit determination
   let outfitDesc = 'casual everyday outfits with natural fabric creases';
-  if (/kurta/i.test(pLower)) {
+  if (/polka|dot/i.test(allText) || (is1980s && subjectType === 'solo_female')) {
+    outfitDesc = 'a vintage cream puff-sleeve dress with red polka dots and a classic red waist belt';
+  } else if (/saree|sari/i.test(allText)) {
+    outfitDesc = 'an elegant traditional saree with authentic fabric drape';
+  } else if (/kurta/i.test(allText)) {
     outfitDesc = 'authentic textured kurtas with realistic fabric folds';
-  } else if (/saree|sari/i.test(pLower)) {
-    outfitDesc = 'an elegant traditional saree with authentic drape';
-  } else if (/naruto|graphic|tee|t-shirt/i.test(pLower)) {
+  } else if (/naruto|graphic|tee|t-shirt/i.test(allText)) {
     outfitDesc = 'casual everyday tees with relaxed cotton textures';
-  } else if (/dress|crochet/i.test(pLower)) {
+  } else if (/dress|crochet/i.test(allText)) {
     outfitDesc = 'a charming casual dress with lovely everyday styling';
   }
 
+  // Aesthetic determination
+  let aestheticDesc = 'soft natural ambient lighting, subtle exposure variations, and mobile camera sensor softness';
+  if (is1980s) {
+    aestheticDesc = 'authentic 1980s analog film grain, an orange date timestamp ("JUL 27 1986"), and warm ambient lighting';
+  }
+
+  // Subject action & description
+  let subjectActionDesc = 'two people sharing candid closeness, genuine eye contact, and playful chemistry';
+  let photoGoal = 'making sweet couple memories';
+  if (subjectType === 'solo_female') {
+    subjectActionDesc = 'a stylish young woman captured in a spontaneous, unposed moment with a playful expression';
+    photoGoal = is1980s ? 'creating your own viral 1980s retro portraits' : 'creating your own viral aesthetic portraits';
+  } else if (subjectType === 'solo_male') {
+    subjectActionDesc = 'a stylish young man captured in a spontaneous, unposed moment with confident, natural energy';
+    photoGoal = 'creating your own viral portraits';
+  }
+
+  const subjectLabel = subjectType === 'solo_female'
+    ? '1 Person (Single young woman / girl)'
+    : subjectType === 'solo_male'
+    ? '1 Person (Single young man / boy)'
+    : '2 People (Romantic couple)';
+
+  const reversePromptText = `VISUAL REVERSE PROMPT ANALYSIS (EXTRACTED FROM ATTACHED VISUAL):
+- Primary Subject: ${subjectLabel}
+- Scene & Framing: ${sceneTitle}
+- Outfits & Wardrobe: ${outfitDesc}
+- Visual Aesthetics: ${aestheticDesc}
+- Realism Parameters: Strict facial identity, authentic skin texture without artificial AI smoothing, natural smile lines
+
+STRICT SUBJECT ACCURACY REQUIREMENT:
+${subjectType === 'solo_female'
+  ? 'The visual portrays ONE SINGLE WOMAN/GIRL. Under NO circumstances should you describe "two people", "couple closeness", or "romance". Focus on HER authentic styling and portrait.'
+  : subjectType === 'solo_male'
+  ? 'The visual portrays ONE SINGLE MAN/BOY. Under NO circumstances should you describe "two people" or "couple closeness". Focus on HIS authentic portrait.'
+  : 'The visual portrays a couple. Describe their candid closeness and romantic chemistry.'}`;
+
+  return {
+    subjectType,
+    sceneTitle,
+    outfitDesc,
+    aestheticDesc,
+    subjectActionDesc,
+    photoGoal,
+    is1980s,
+    reversePromptText,
+  };
+}
+
+/**
+ * Smart Dynamic Synthesis for "About this prompt" (Strictly < 199 words, 4 cohesive paragraphs)
+ * Written in simple, warm, human English explaining what you see in the prompt & visual,
+ * with natural details and a friendly CTA to copy, try, and have fun.
+ * Weaves ALL 10 TARGET KEYWORDS (5 pinned + 5 random unpinned) into fluent, human sentences.
+ */
+export function generateSmartAboutPrompt(
+  input: GenerationInput,
+  partition?: ArigatoSiteKeywordPartition,
+  visual?: VisualAnalysis
+): string {
+  const parts = partition || partitionArigatoSiteKeywords(input);
+  const kws = parts.aboutKeywords;
+  const v = visual || analyzeVisualAndPrompt(input);
+
   // Para 1: What you see in the prompt (simple, warm, human)
-  const p1 = `If you want a cute, realistic photo idea, this prompt creates ${sceneTitle} for ${kws[0] || 'realistic couple prompt'} and ${kws[1] || 'gemini couple prompt'}. You get to see two people sharing candid closeness, genuine eye contact, and playful chemistry that brings ${kws[2] || 'couple photo'} to life with authentic romance.`;
+  const p1 = `If you want a cute, realistic photo idea, this prompt creates ${v.sceneTitle} for ${kws[0] || 'realistic photo prompt'} and ${kws[1] || 'trending ai prompt'}. You get to see ${v.subjectActionDesc} that brings ${kws[2] || 'authentic photo'} to life with authentic charm.`;
 
   // Para 2: Details on facial realism & natural features
-  const p2 = `What makes this prompt special is how naturally it captures real facial features for ${kws[3] || 'couple aesthetic'} and ${kws[4] || 'realistic couple prompt'}. Instead of fake AI smoothing, it preserves authentic skin texture, natural smile lines, and true-to-life expressions with complete realism.`;
+  const p2 = `What makes this prompt special is how naturally it captures real facial features for ${kws[3] || 'aesthetic look'} and ${kws[4] || 'realistic prompt'}. Instead of fake AI smoothing, it preserves authentic skin texture, natural smile lines, and true-to-life expressions with complete realism.`;
 
   // Para 3: Outfits, lighting & smartphone feel
-  const p3 = `The styling stays relaxed with ${outfitDesc} tailored for ${kws[5] || 'trending prompt girls'} and ${kws[6] || 'trending prompt boys'}. Combined with soft ambient lighting and candid mobile camera vibes, it creates an effortless look for ${kws[7] || 'candid couple photo'} and ${kws[8] || 'couple selfie poses'}.`;
+  const p3 = `The styling stays relaxed with ${v.outfitDesc} tailored for ${kws[5] || 'trending prompt girls'} and ${kws[6] || 'trending prompt boys'}. Combined with ${v.aestheticDesc}, it creates an effortless look for ${kws[7] || 'candid photo'} and ${kws[8] || 'selfie poses'}.`;
 
   // Para 4: Friendly call to action (try it, copy it, have fun!)
-  const p4 = `Whether you want to try ${kws[9] || 'smartphone couple photo'} or make sweet couple memories, this prompt is ready. Just copy the prompt above, try it in your AI generator, and have fun creating your own viral couple photos!`;
+  const p4 = `Whether you want to try ${kws[9] || 'smartphone photo'} or ${v.photoGoal}, this prompt is ready. Just copy the prompt above, try it in your AI generator, and have fun creating your own viral photos!`;
 
   const fullPrompt = `${p1}\n\n${p2}\n\n${p3}\n\n${p4}`;
   return enforceWordLimit(fullPrompt, 199);
@@ -270,19 +384,39 @@ export function generateSmartAboutPrompt(
  */
 export function generateSmartSeoDescription(
   input: GenerationInput,
-  partition?: ArigatoSiteKeywordPartition
+  partition?: ArigatoSiteKeywordPartition,
+  visual?: VisualAnalysis
 ): string {
   const parts = partition || partitionArigatoSiteKeywords(input);
   const [k1, k2, k3] = parts.descKeywords;
+  const v = visual || analyzeVisualAndPrompt(input);
 
-  let desc = `Couple AI prompt for ${k1} & ${k2} with ${k3}, strict face identity, natural lighting, and candid smartphone realism.`;
+  let desc = '';
+  if (v.subjectType === 'solo_female') {
+    desc = v.is1980s
+      ? `1980s AI photo prompt for ${k1} & ${k2} with ${k3}, vintage polka-dot dress, retro film grain, and authentic skin realism.`
+      : `Girl AI prompt for ${k1} & ${k2} with ${k3}, authentic styling, natural lighting, and candid smartphone realism.`;
+  } else if (v.subjectType === 'solo_male') {
+    desc = `Portrait AI prompt for ${k1} & ${k2} with ${k3}, authentic styling, natural lighting, and candid smartphone realism.`;
+  } else {
+    desc = `Couple AI prompt for ${k1} & ${k2} with ${k3}, strict face identity, natural lighting, and candid smartphone realism.`;
+  }
+
   if (desc.length > 160) {
     desc = `AI prompt for ${k1} and ${k2}, featuring ${k3}, strict face identity, and authentic smartphone realism.`;
   }
-  if (desc.length > 160) {
-    desc = enforceCharLimit(desc, 160);
+  return enforceCharLimit(desc, 160);
+}
+
+export function getSiteMetaTitle(v: VisualAnalysis): string {
+  if (v.subjectType === 'solo_female') {
+    return v.is1980s
+      ? '1980s Vintage Girl AI Prompt — Arigato Labs'
+      : 'Realistic Girl AI Prompt — Arigato Labs';
+  } else if (v.subjectType === 'solo_male') {
+    return 'Realistic Portrait AI Prompt — Arigato Labs';
   }
-  return desc;
+  return 'Realistic Couple AI Prompt — Arigato Labs';
 }
 
 /**
@@ -440,13 +574,14 @@ export function buildSmartPinterestVariations(
 /**
  * Smart synthesis generator for Pinterest SEO (Dual-Mode: With Link vs Google Search Steps)
  */
-export function generateSmartPinterestSeo(input: GenerationInput): {
+export function generateSmartPinterestSeo(input: GenerationInput, visual?: VisualAnalysis): {
   title: string;
   description: string;
   tags: string[];
   recommendedBoard: string;
   variations: PinterestVariation[];
 } {
+  const v = visual || analyzeVisualAndPrompt(input);
   const variations = buildSmartPinterestVariations(input, input.variationCount || 2);
   const pinnedKws = input.pinnedKeywords || [];
 
@@ -456,25 +591,55 @@ export function generateSmartPinterestSeo(input: GenerationInput): {
     .filter((w) => w.length > 3)
     .slice(0, 4);
 
-  const baseTags = [
-    '#couplephoto',
-    '#coupleselfie',
-    '#couplepictures',
-    '#coupleaesthetic',
-    '#coupleprompt',
-    '#geminicoupleprompt',
-    ...topicWords.map((w) => `#${w.toLowerCase()}`),
-    ...pinnedKws.map((k) => `#${k.replace(/\s+/g, '').toLowerCase()}`),
-    '#pinterestviral',
-    '#aestheticart',
-  ];
+  const baseTags = v.subjectType === 'solo_female'
+    ? [
+        v.is1980s ? '#1980saiprompt' : '#aigirlprompt',
+        v.is1980s ? '#1980strend' : '#trendingpromptgirls',
+        '#retroaesthetic',
+        '#mirrorselfie',
+        '#vintagefashion',
+        '#geminiaiprompt',
+        ...topicWords.map((w) => `#${w.toLowerCase()}`),
+        ...pinnedKws.map((k) => `#${k.replace(/\s+/g, '').toLowerCase()}`),
+        '#pinterestviral',
+        '#aestheticportrait',
+      ]
+    : v.subjectType === 'solo_male'
+    ? [
+        '#aimenprompt',
+        '#maleaesthetic',
+        '#candidportrait',
+        '#geminiaiprompt',
+        ...topicWords.map((w) => `#${w.toLowerCase()}`),
+        ...pinnedKws.map((k) => `#${k.replace(/\s+/g, '').toLowerCase()}`),
+        '#pinterestviral',
+        '#aestheticportrait',
+      ]
+    : [
+        '#couplephoto',
+        '#coupleselfie',
+        '#couplepictures',
+        '#coupleaesthetic',
+        '#coupleprompt',
+        '#geminicoupleprompt',
+        ...topicWords.map((w) => `#${w.toLowerCase()}`),
+        ...pinnedKws.map((k) => `#${k.replace(/\s+/g, '').toLowerCase()}`),
+        '#pinterestviral',
+        '#aestheticart',
+      ];
   const tags = Array.from(new Set(baseTags)).slice(0, 10);
+
+  const recommendedBoard = v.subjectType === 'solo_female'
+    ? (v.is1980s ? '1980s AI Photo Trend | Retro Portraits' : 'Trending AI Prompts Girls | Aesthetic Portraits')
+    : v.subjectType === 'solo_male'
+    ? 'Men Portrait Prompts | Photography Ideas'
+    : 'Kiss Prompts For Gemini AI | Couple Prompts';
 
   return {
     title: variations[0].title,
     description: variations[0].description,
     tags,
-    recommendedBoard: 'Kiss Prompts For Gemini AI | Couple Prompts',
+    recommendedBoard,
     variations,
   };
 }
@@ -489,13 +654,19 @@ export async function generatePinterestSeo(
   onProgress?: ProgressCallback
 ): Promise<PinterestSeoResult> {
   const config = getStoredApiConfig();
+  const visual = analyzeVisualAndPrompt(input);
 
   // Step 1: Vision / Image Scan Simulation (0% -> 20%)
-  onProgress?.(1, 15, 'Scanning image visual composition & color aesthetics...');
+  const scanMsg = visual.subjectType === 'solo_female'
+    ? 'Scanning solo female portrait, 1980s styling & retro aesthetics...'
+    : visual.subjectType === 'solo_male'
+    ? 'Scanning solo male portrait aesthetics & framing...'
+    : 'Scanning image visual composition & color aesthetics...';
+  onProgress?.(1, 15, scanMsg);
   await new Promise((r) => setTimeout(r, 250));
 
   // Step 2: Prompt Semantic Analysis (20% -> 40%)
-  onProgress?.(2, 35, 'Extracting core thematic anchors from user prompt...');
+  onProgress?.(2, 35, 'Extracting core thematic anchors from user prompt & visual reverse prompt...');
   await new Promise((r) => setTimeout(r, 250));
 
   // Step 3: Synthesis & Keyword Integration (45% -> 88%)
@@ -525,7 +696,7 @@ export async function generatePinterestSeo(
     const activeApiKey = resolveApiKey(config);
     if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
       try {
-        const live = await executeCustomPinterestApi(input, config);
+        const live = await executeCustomPinterestApi(input, config, visual);
         if (
           live &&
           live.title &&
@@ -549,7 +720,7 @@ export async function generatePinterestSeo(
 
   if (!pinResult) {
     // Fallback to Smart Dual-Mode Generator
-    const smart = generateSmartPinterestSeo(input);
+    const smart = generateSmartPinterestSeo(input, visual);
     const selectedKeywords = Array.from(new Set([...(input.pinnedKeywords || []), ...input.activeKeywords])).slice(0, 4);
     pinResult = {
       title: smart.title,
@@ -594,13 +765,19 @@ export async function generateArigatoSiteSeo(
   // - Meta Description: 3 keywords in sentence (2 random pinned + 1 random unpinned)
   // - Tags: 9 tags (4 random pinned + 5 random unpinned)
   const partition = partitionArigatoSiteKeywords(input);
+  const visual = analyzeVisualAndPrompt(input);
 
   // Step 1: Scan (0% -> 20%)
-  onProgress?.(1, 15, 'Scanning visual composition, lighting balance and subjects...');
+  const scanMsg = visual.subjectType === 'solo_female'
+    ? 'Scanning solo female portrait, 1980s styling & retro aesthetics...'
+    : visual.subjectType === 'solo_male'
+    ? 'Scanning solo male portrait aesthetics & framing...'
+    : 'Scanning visual composition, lighting balance and subjects...';
+  onProgress?.(1, 15, scanMsg);
   await new Promise((r) => setTimeout(r, 250));
 
   // Step 2: Extract Prompt Metadata & Rules (20% -> 40%)
-  onProgress?.(2, 35, 'Partitioning keywords: 10 for About, 3 for Meta, 9 for Tags...');
+  onProgress?.(2, 35, `Partitioning keywords: 10 for About, 3 for Meta, 9 for Tags (${visual.subjectType})...`);
   await new Promise((r) => setTimeout(r, 250));
 
   // Step 3: Neural AI Synthesis (45% -> 88%)
@@ -631,7 +808,7 @@ export async function generateArigatoSiteSeo(
     const activeApiKey = resolveApiKey(config);
     if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
       try {
-        const liveResult = await executeCustomSiteApi(input, config, partition);
+        const liveResult = await executeCustomSiteApi(input, config, partition, visual);
         if (
           liveResult &&
           liveResult.aboutPrompt &&
@@ -655,9 +832,9 @@ export async function generateArigatoSiteSeo(
 
   if (!siteResult) {
     // Fallback to Smart Dynamic Generator based on the 10 Master Examples
-    const aboutPrompt = generateSmartAboutPrompt(input, partition);
+    const aboutPrompt = generateSmartAboutPrompt(input, partition, visual);
     const wordCount = countWords(aboutPrompt);
-    const seoDescription = generateSmartSeoDescription(input, partition);
+    const seoDescription = generateSmartSeoDescription(input, partition, visual);
     const charCount = seoDescription.length;
     const keywords = generateSmartKeywords(input, partition);
 
@@ -668,7 +845,7 @@ export async function generateArigatoSiteSeo(
       charCount,
       keywords,
       keywordsMatched: partition.aboutKeywords,
-      siteMetaTitle: `Realistic Couple AI Prompt — Arigato Labs`,
+      siteMetaTitle: getSiteMetaTitle(visual),
     };
   }
 
@@ -728,63 +905,55 @@ function buildAuthHeaders(config: ApiConfig): Record<string, string> {
   return headers;
 }
 
-async function executeCustomPinterestApi(input: GenerationInput, config: ApiConfig): Promise<PinterestSeoResult> {
+async function executeCustomPinterestApi(input: GenerationInput, config: ApiConfig, visualAnalysis?: VisualAnalysis): Promise<PinterestSeoResult> {
   const headers = buildAuthHeaders(config);
   const endpoint = resolveApiUrl(config);
 
   const format = input.pinterestFormat || 'with_link';
-
   const requestedVariations = Math.min(Math.max(input.variationCount || 2, 2), 5);
+  const v = visualAnalysis || analyzeVisualAndPrompt(input);
 
-  const systemContent = `You are an elite Pinterest SEO expert for Arigato Labs.
-Analyze the user's prompt and creative details to generate a high-converting Pinterest SEO pin package.
+  const defaultBoard = v.subjectType === 'solo_female'
+    ? (v.is1980s ? '1980s AI Photo Trend | Retro Portraits' : 'Trending AI Prompts Girls | Aesthetic Portraits')
+    : v.subjectType === 'solo_male'
+    ? 'Men Portrait Prompts | Photography Ideas'
+    : 'Kiss Prompts For Gemini AI | Couple Prompts';
 
-PINTEREST STRATEGY MODE: ${format === 'with_link' ? 'WITH WEBSITE LINK (DIRECT CTR)' : 'GOOGLE SEARCH STEPS (ORGANIC FUNNEL)'}
+  const systemContent = `You are a viral Pinterest SEO & Social Growth strategist at Arigato Labs.
+Your task is to analyze the user's prompt text and reference visual to generate high-CTR Pinterest SEO pins.
 
-MANDATORY RULES:
-1. PIN TITLE: Catchy, lovely, sensual and keyword-rich (strictly 40 to 80 characters). Must include a relevant romantic/expressive emoji (e.g. 💋, ✨, 🤍, 🔥, 😂, 💕).
-   ${format === 'with_link'
-     ? '- MUST END WITH: " | Click Visit Site for Prompt" (e.g. "Elevator Kiss Couple Prompt 💋 | Click Visit Site for Prompt")'
-     : '- MUST END WITH: " | Gemini Couple Photo" or a high-volume secondary keyword (e.g. "Funny Couple Hair Moustache Prompt 😂 | Gemini Couple Photo")'}
+${v.reversePromptText}
 
-2. DESCRIPTION: MUST BE STRICTLY UNDER 600 CHARACTERS (target 380 to 520 characters, NEVER exceed 580 characters).
-   CRITICAL ANTI-KEYWORD-STUFFING RULE:
-   - ABSOLUTELY NEVER append a comma-separated list of keywords (e.g. NEVER write "Perfect for couple photo, couple selfie, couple pictures, couple aesthetic...").
-   - Instead, integrate 1 or 2 target keywords SMARTLY into a fluid, human, grammatically complete sentence.
-   ${format === 'with_link'
-     ? `- Structure (Under 520 chars):
-       1. Describe the scene/pose as a viral AI photo idea with romantic chemistry and natural lighting.
-       2. Weave 1-2 target keywords naturally (e.g. "Ideal for anyone looking for [Keyword 1] or aesthetic [Keyword 2] with candid romance.").
-       3. End with: "Click visit site for the full prompt recreation!"`
-     : `- Structure (Under 520 chars):
-       1. Start with the concise 4-step Google guide:
-       "How to get this prompt: 1. Search \\"Arigato Devan\\" on Google. 2. Open the Arigato Devan website. 3. Browse trending Gemini couple prompts & photo ideas. 4. Find this prompt and create your image!"
-       2. Follow with the visual description and smart keyword integration:
-       "This [topic] prompt captures [candid pose details]. Ideal for creating [Keyword 1] and aesthetic [Keyword 2] with cinematic warmth."`
-   }
+STRICT SUBJECT ACCURACY:
+${v.subjectType === 'solo_female'
+  ? '- The subject is ONE SINGLE WOMAN/GIRL. DO NOT describe "two people", "couple closeness", or "romance". Focus on HER vintage/candid portrait.'
+  : v.subjectType === 'solo_male'
+  ? '- The subject is ONE SINGLE MAN/BOY. DO NOT describe "two people" or "couple closeness". Focus on HIS portrait.'
+  : '- The subject is a romantic couple. Describe their candid closeness and chemistry.'}
 
+STRICT ANTI-KEYWORD-STUFFING DIRECTIVE:
+- ABSOLUTELY NEVER output a comma-separated list of keywords.
+- Every keyword MUST be woven naturally into a fluent, human sentence.
+
+SECTIONS REQUIRED:
+1. TITLE: High CTR Pinterest Pin title (strictly 40 to 80 chars). Must end with "${format === 'with_link' ? ' | Click Visit Site for Prompt' : ` | ${v.subjectType === 'solo_female' ? 'Retro Girl Photo' : v.subjectType === 'solo_male' ? 'Men Portrait Photo' : 'Gemini Couple Photo'}`}".
+2. DESCRIPTION: High-converting description (strictly under 580 characters).
 3. TAGS: Array of 8 to 10 viral search tags starting with #.
-4. RECOMMENDED BOARD: Relevant board name (e.g. "Kiss Prompts For Gemini AI | Couple Prompts").
-
+4. RECOMMENDED BOARD: Relevant board name (e.g. "${defaultBoard}").
 5. VARIATIONS (MANDATORY): Generate exactly ${requestedVariations} distinct variations for A/B testing pins.
-   Each item in "variations" must have:
-   - "title": Distinct angle with relevant romantic emoji and appropriate suffix (strictly 40 to 80 chars).
-   - "description": Distinct description under 580 characters with natural keyword weaving.
 
-PINNED KEYWORDS (Integrate 1-2 naturally in sentence, DO NOT DUMP AS A LIST): ${input.pinnedKeywords?.join(', ') || 'None'}
+PINNED KEYWORDS: ${input.pinnedKeywords?.join(', ') || 'None'}
 ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.slice(0, 6).join(', ')}
 
 OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "title", "description", "tags", "recommendedBoard", "variations".
-"variations" must be an array of exactly ${requestedVariations} items: [ { "title": "...", "description": "..." }, ... ]
 Do NOT include markdown fences or think tags in the JSON.`;
 
   const canUseVision = Boolean(input.imageDataUrl && isVisionModel(config.model || ''));
-  const visualNote = input.imageFileName
-    ? `\n[Reference Image Asset: "${input.imageFileName}"]`
-    : input.imageDataUrl
-    ? `\n[Reference Image Asset: Visual photo composition attached]`
-    : '';
-  const userTextPrompt = `Create ${requestedVariations} distinct high-converting ${format === 'with_link' ? 'With Link' : 'Search Steps'} Pinterest SEO variations for:\nPrompt: "${input.prompt || 'Aesthetic Visual Art'}"${visualNote}\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nConfigured Keywords: ${input.activeKeywords.join(', ')}`;
+  const userTextPrompt = `Create ${requestedVariations} distinct high-converting ${format === 'with_link' ? 'With Link' : 'Search Steps'} Pinterest SEO variations for:
+Prompt: "${input.prompt || v.sceneTitle}"
+${v.reversePromptText}
+Pinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}
+Configured Keywords: ${input.activeKeywords.join(', ')}`;
 
   const buildPayload = (includeImage: boolean) => {
     const messages: any[] = [
@@ -1017,18 +1186,29 @@ Do NOT include markdown fences or think tags in the JSON.`;
 async function executeCustomSiteApi(
   input: GenerationInput,
   config: ApiConfig,
-  partition: ArigatoSiteKeywordPartition
+  partition: ArigatoSiteKeywordPartition,
+  visual?: VisualAnalysis
 ): Promise<ArigatoSiteSeoResult> {
+  const v = visual || analyzeVisualAndPrompt(input);
   const headers = buildAuthHeaders(config);
   const endpoint = resolveApiUrl(config);
 
   const systemContent = `You are a friendly, creative AI prompt curator and blogger at Arigato Labs.
 Your task is to analyze the user's prompt text and reference visual to write an engaging, simple, human-style "About this prompt" guide, a click-worthy Google SERP meta description, and 9 SEO tags.
 
+${v.reversePromptText}
+
 TONE & WRITING STYLE:
 - Write in simple, warm, conversational, human English (like an enthusiastic creator sharing an awesome prompt with friends on a blog).
 - DO NOT sound like a robotic system specification or legal contract. NEVER use stiff phrases like "This creative photography specification...", "Strict facial identity preservation is maintained as the highest priority...", etc.
 - No plagiarism: Write with 100% original, fresh human energy.
+
+STRICT SUBJECT ACCURACY DIRECTIVE:
+${v.subjectType === 'solo_female'
+  ? '- The visual portrays ONE SINGLE WOMAN/GIRL. DO NOT describe "two people", "couple closeness", or "romance". Focus on HER authentic vintage/candid portrait and styling.'
+  : v.subjectType === 'solo_male'
+  ? '- The visual portrays ONE SINGLE MAN/BOY. DO NOT describe "two people", "couple closeness", or "romance". Focus on HIS authentic portrait.'
+  : '- The visual portrays a romantic couple. Describe their candid closeness and romantic chemistry.'}
 
 ENVIRONMENT NOTICE:
 This is for "Arigato Site SEO" (NOT Pinterest). Do NOT generate Pinterest board recommendations, Pinterest pin titles, or Pinterest hashtags.
@@ -1044,10 +1224,10 @@ We have pre-selected the exact keywords you must use for each section:
    - STRICT CONSTRAINT: Word count MUST be UNDER 199 words (target 140 to 175 words).
    - ANTI-KEYWORD-STUFFING: ABSOLUTELY NEVER output a comma-separated list of keywords. Every keyword MUST be woven naturally into a sentence.
    - Paragraph Guidelines:
-     * Para 1 (What you see in the prompt): Tell the reader in simple English what they get to see in this prompt: the scene, cute poses, expressions, and romantic chemistry. (Weave 3 keywords naturally).
+     * Para 1 (What you see in the prompt): Tell the reader in simple English what they get to see in this prompt: the scene, subject, pose, and aesthetic charm. (Weave 3 keywords naturally).
      * Para 2 (Details on facial features): Explain what makes the prompt special: authentic facial features, real skin texture without fake AI smoothing, and lifelike expressions. (Weave 2 keywords naturally).
-     * Para 3 (Outfits & Lighting): Describe the relaxed styling, everyday outfits, natural fabric folds, soft ambient lighting, and candid mobile camera vibes. (Weave 2 keywords naturally).
-     * Para 4 (Friendly Call-To-Action): Conclude with a warm, human invitation telling the reader to copy the prompt, try it in their AI generator, and have fun creating their own viral couple photos! (Weave 3 keywords naturally).
+     * Para 3 (Outfits & Lighting): Describe the relaxed styling, outfits, natural fabric folds, ambient lighting, and candid camera vibes. (Weave 2 keywords naturally).
+     * Para 4 (Friendly Call-To-Action): Conclude with a warm, human invitation telling the reader to copy the prompt, try it in their AI generator, and have fun creating their own viral photos! (Weave 3 keywords naturally).
 
 2. "seoDescription" (3 MANDATORY KEYWORDS):
    - STRICT CONSTRAINT: MUST BE STRICTLY UNDER 160 CHARACTERS (target 130 to 155 characters).
@@ -1061,18 +1241,19 @@ We have pre-selected the exact keywords you must use for each section:
      [${partition.tagKeywords.map((k) => `"${k}"`).join(', ')}]
 
 4. "siteMetaTitle":
-   - A concise SERP title under 65 chars (e.g. "Realistic Couple AI Prompt — Arigato Labs").
+   - A concise SERP title under 65 chars (e.g. "${getSiteMetaTitle(v)}").
 
 OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDescription", "keywords", "siteMetaTitle". Do NOT include markdown commentary or think tags in the JSON.`;
 
   const canUseVision = Boolean(input.imageDataUrl && isVisionModel(config.model || ''));
-  const visualNote = input.imageFileName
-    ? `\n[Reference Image Asset: "${input.imageFileName}" - capture realistic facial details, candid couple chemistry, authentic skin pores, and natural camera sensor look]`
-    : input.imageDataUrl
-    ? `\n[Reference Image Asset: High-realism candid couple photo with natural lighting and unposed styling]`
-    : '';
+  const userTextPrompt = `Create the authoritative Arigato Site SEO package for:
+Prompt: "${input.prompt || v.sceneTitle}"
+${v.reversePromptText}
 
-  const userTextPrompt = `Create the authoritative Arigato Site SEO package for:\nPrompt: "${input.prompt || 'Realistic couple photo'}"${visualNote}\n\nREQUIRED KEYWORD ASSIGNMENTS:\n- About This Prompt (weave all 10 in sentences): ${partition.aboutKeywords.join(', ')}\n- SEO Meta Description (weave all 3 in sentence): ${partition.descKeywords.join(', ')}\n- Exact 9 Tags: ${partition.tagKeywords.join(', ')}`;
+REQUIRED KEYWORD ASSIGNMENTS:
+- About This Prompt (weave all 10 in sentences): ${partition.aboutKeywords.join(', ')}
+- SEO Meta Description (weave all 3 in sentence): ${partition.descKeywords.join(', ')}
+- Exact 9 Tags: ${partition.tagKeywords.join(', ')}`;
 
   const buildPayload = (includeImage: boolean) => {
     const messages: any[] = [
@@ -1150,8 +1331,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDes
   let rawSeoDesc = parsed.seoDescription || parsed.seo_description || parsed.meta_description || parsed.metaDescription || parsed.description || '';
 
   const smartBackup = {
-    aboutPrompt: generateSmartAboutPrompt(input, partition),
-    seoDescription: generateSmartSeoDescription(input, partition),
+    aboutPrompt: generateSmartAboutPrompt(input, partition, v),
+    seoDescription: generateSmartSeoDescription(input, partition, v),
     keywords: generateSmartKeywords(input, partition),
   };
 
@@ -1184,7 +1365,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDes
     charCount: seoDescription.length,
     keywords,
     keywordsMatched: partition.aboutKeywords,
-    siteMetaTitle: parsed.siteMetaTitle || parsed.site_meta_title || parsed.title || 'Realistic Couple AI Prompt — Arigato Labs',
+    siteMetaTitle: parsed.siteMetaTitle || parsed.site_meta_title || parsed.title || getSiteMetaTitle(v),
   };
 }
 
