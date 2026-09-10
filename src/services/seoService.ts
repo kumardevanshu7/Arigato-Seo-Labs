@@ -111,67 +111,152 @@ export function extractSafeJsonObject(rawText: string): any {
   }
 }
 
+export interface ArigatoSiteKeywordPartition {
+  // For aboutPrompt (10 keywords in sentences: 5 pinned + 5 random unpinned)
+  aboutKeywords: string[];
+  aboutPinned: string[];
+  aboutUnpinned: string[];
+
+  // For seoDescription (3 keywords in sentence: 2 random pinned + 1 random unpinned)
+  descKeywords: string[];
+  descPinned: string[];
+  descUnpinned: string[];
+
+  // For keywords tags (9 tags: 4 random pinned + 5 random unpinned)
+  tagKeywords: string[];
+  tagPinned: string[];
+  tagUnpinned: string[];
+}
+
+/**
+ * Partitions Arigato Site keywords according to strict user rules:
+ * 1. "about-this-prompt.md": 10 keywords in sentences (5 pinned + 5 random unpinned)
+ * 2. "seo-meta-description.txt": 3 keywords in sentence (2 random pinned + 1 random unpinned)
+ * 3. "seo-keywords.csv": 9 tags (4 random pinned + 5 random unpinned)
+ */
+export function partitionArigatoSiteKeywords(input: GenerationInput): ArigatoSiteKeywordPartition {
+  // 1. Get pinned keywords (max 5)
+  const pinnedList = (input.pinnedKeywords || []).map((k) => k.trim()).filter(Boolean).slice(0, 5);
+
+  // 2. Get active unpinned keywords
+  const unpinnedList = (input.activeKeywords || [])
+    .map((k) => k.trim())
+    .filter((k) => Boolean(k) && !pinnedList.some((pk) => pk.toLowerCase() === k.toLowerCase()));
+
+  // 3. Fallback high-intent keywords if active list has fewer items
+  const fallbackSiteKeywords = [
+    'gemini couple prompt',
+    'realistic couple prompt for gemini ai',
+    'couple prompt',
+    'couple aesthetic',
+    'candid couple photo',
+    'couple selfie poses',
+    'smartphone couple photo',
+    'gemini couple prompt instagram',
+    'couple photo ideas',
+    'aesthetic couple portrait',
+    'viral couple prompt',
+    'couple photography ideas',
+  ];
+
+  const enrichedUnpinned: string[] = [...unpinnedList];
+  for (const fb of fallbackSiteKeywords) {
+    if (
+      !enrichedUnpinned.some((k) => k.toLowerCase() === fb.toLowerCase()) &&
+      !pinnedList.some((k) => k.toLowerCase() === fb.toLowerCase())
+    ) {
+      enrichedUnpinned.push(fb);
+    }
+  }
+
+  // Shuffle unpinned pool randomly for every generation
+  const shuffledUnpinned = [...enrichedUnpinned].sort(() => 0.5 - Math.random());
+
+  // A. ABOUT THIS PROMPT (10 keywords: 5 pinned + 5 random unpinned)
+  const aboutPinned = [...pinnedList];
+  const neededUnpinnedForAbout = Math.max(0, 10 - aboutPinned.length);
+  const aboutUnpinned = shuffledUnpinned.slice(0, neededUnpinnedForAbout);
+  const aboutKeywords = [...aboutPinned, ...aboutUnpinned].slice(0, 10);
+
+  // B. SEO META DESCRIPTION (3 keywords: 2 random pinned + 1 random unpinned)
+  const shuffledPinned = [...pinnedList].sort(() => 0.5 - Math.random());
+  const descPinned = shuffledPinned.slice(0, Math.min(2, shuffledPinned.length));
+  const remainingForDesc = shuffledUnpinned.filter(
+    (k) => !descPinned.some((dp) => dp.toLowerCase() === k.toLowerCase())
+  );
+  const descUnpinned = remainingForDesc.slice(0, Math.max(0, 3 - descPinned.length));
+  const descKeywords = [...descPinned, ...descUnpinned].slice(0, 3);
+
+  // C. SEO KEYWORDS TAGS (9 tags: 4 random pinned + 5 random unpinned)
+  const tagPinned = shuffledPinned.slice(0, Math.min(4, shuffledPinned.length));
+  const remainingForTags = shuffledUnpinned.filter(
+    (k) => !tagPinned.some((tp) => tp.toLowerCase() === k.toLowerCase())
+  );
+  const tagUnpinned = remainingForTags.slice(0, Math.max(0, 9 - tagPinned.length));
+  const tagKeywords = [...tagPinned, ...tagUnpinned].slice(0, 9);
+
+  return {
+    aboutKeywords,
+    aboutPinned,
+    aboutUnpinned,
+    descKeywords,
+    descPinned,
+    descUnpinned,
+    tagKeywords,
+    tagPinned,
+    tagUnpinned,
+  };
+}
+
 /**
  * Smart Dynamic Synthesis for "About this prompt" (Strictly < 199 words, 4 cohesive paragraphs)
- * Adheres strictly to the 10 real master examples:
- * Para 1: Candid pose, scene, framing (e.g. 3-frame collage, stacked selfies, cafe, balcony, elevator)
- * Para 2: Strict facial identity preservation & anti-AI smoothing principles
- * Para 3: Exact outfits, fabrics, accessories from prompt/reference
- * Para 4: Smartphone camera realism, natural lighting, everyday romance
+ * Weaves ALL 10 TARGET KEYWORDS (5 pinned + 5 random unpinned) into fluent, human sentences.
  */
-export function generateSmartAboutPrompt(input: GenerationInput): string {
-  const promptLower = (input.prompt || '').toLowerCase();
+export function generateSmartAboutPrompt(
+  input: GenerationInput,
+  partition?: ArigatoSiteKeywordPartition
+): string {
+  const parts = partition || partitionArigatoSiteKeywords(input);
+  const kws = parts.aboutKeywords;
+  const pLower = (input.prompt || '').toLowerCase();
 
-  // Paragraph 1: Scene & Candid Pose
-  let p1 = '';
-  const isStackedCollage = /stack|collage|three|3-frame|grid|strip|series|multi-frame/i.test(promptLower);
-  const isCoveringEyes = /cover.*eye|blindfold|hand.*over.*eye/i.test(promptLower);
-  const isCheekSquish = /cheek|squish|pinch|holding.*cheek/i.test(promptLower);
-  const isCafe = /cafe|coffee|table|restaurant|indoor.*table/i.test(promptLower);
-  const isElevator = /elevator|lift|mirror/i.test(promptLower);
-  const isBalcony = /balcony|terrace|rooftop|outdoors/i.test(promptLower);
-
-  if (isStackedCollage && isCoveringEyes) {
-    p1 = 'Create a realistic candid couple photography prompt featuring a young couple captured in an intimate, spontaneous vertical 3-frame selfie series. In playful sequence, the woman stands close behind her partner, tenderly covering his eyes with both hands while he laughs warmly, capturing genuine unscripted affection and playful chemistry.';
-  } else if (isStackedCollage) {
-    p1 = 'Create a realistic candid couple photography prompt featuring a young couple captured in an intimate, spontaneous vertical 3-frame selfie series. Both subjects share natural closeness with genuine eye contact, candid smiles, and playful unposed chemistry across each frame rather than a staged look.';
-  } else if (isCoveringEyes) {
-    p1 = "Create a realistic candid couple photography prompt featuring a young couple in an intimate, spontaneous moment. The woman playfully covers the man's eyes with both hands from behind while he smiles warmly, creating a sweet, unposed interaction full of romantic warmth and genuine connection.";
-  } else if (isCheekSquish) {
-    p1 = "Create a realistic candid couple photography prompt featuring a young couple in a playful, affectionate moment. One partner tenderly holds and squishes the other's cheek with gentle fingers, sharing genuine smiles and natural, unscripted chemistry.";
-  } else if (isCafe) {
-    p1 = 'Create a realistic candid couple photography prompt set in a cozy cafe. The couple sits close together across a wooden table with warm beverages, sharing quiet laughter and genuine eye contact in an unscripted, affectionate moment.';
-  } else if (isElevator) {
-    p1 = 'Create a realistic candid couple photography prompt inside a modern wooden elevator. The couple stands close together, capturing an impromptu mirror selfie with natural closeness and authentic romantic chemistry.';
-  } else if (isBalcony) {
-    p1 = 'Create a realistic candid couple photography prompt set on a serene open balcony. The couple leans close against the railing in the soft morning breeze, sharing quiet laughter and genuine affectionate chemistry.';
-  } else {
-    p1 = 'Create a realistic candid couple photography prompt featuring a young couple in an intimate, spontaneous moment. Both subjects maintain natural closeness with genuine eye contact, affectionate smiles, and playful unposed chemistry rather than a staged look.';
+  // Dynamic scene & mood detection
+  let sceneDesc = 'an intimate, candid couple portrait';
+  if (/3-frame|three.*frame|strip|collage|series/i.test(pLower)) {
+    sceneDesc = 'an intimate, spontaneous vertical 3-frame selfie series';
+  } else if (/elevator|lift/i.test(pLower)) {
+    sceneDesc = 'an intimate, spontaneous elevator mirror portrait';
+  } else if (/cafe|coffee/i.test(pLower)) {
+    sceneDesc = 'a cozy, spontaneous cafe date setting';
+  } else if (/balcony|rooftop/i.test(pLower)) {
+    sceneDesc = 'a serene, open balcony portrait with soft morning daylight';
+  } else if (/street|city|neon|tokyo/i.test(pLower)) {
+    sceneDesc = 'a vibrant, spontaneous urban candid portrait';
   }
 
-  // Paragraph 2: Strict Facial Identity Preservation (Master Paragraph)
-  const p2 = 'Strict facial identity preservation is the highest priority. Preserve both reference identities with strict accuracy, including facial structure, proportions, eyes, nose, lips, skin tone, natural asymmetry, hairline, hairstyle, and authentic skin texture. Keep any reference glasses unchanged. Avoid beautification, skin smoothing, artificial glow, cinematic grading, or polished AI aesthetics.';
-
-  // Paragraph 3: Exact Outfits & Accessories
-  let p3 = '';
-  const hasNaruto = /naruto/i.test(promptLower);
-  const hasPurple = /purple/i.test(promptLower);
-  const hasKurta = /kurta/i.test(promptLower);
-  const hasSaree = /saree|sari/i.test(promptLower);
-  const hasGraphicTee = /graphic|t-shirt|tee/i.test(promptLower);
-
-  if (hasNaruto || (hasPurple && hasGraphicTee)) {
-    p3 = 'Clothing and styling remain authentic to the reference subjects, featuring a casual black Naruto graphic tee and a textured purple top, capturing natural fabric weaves, soft folds, and everyday details with zero synthetic perfection.';
-  } else if (hasKurta) {
-    p3 = 'Clothing and styling feature authentic textured kurtas with realistic fabric weaves, natural stitching, and subtle creases, complemented by understated everyday accessories.';
-  } else if (hasSaree) {
-    p3 = 'Clothing features an elegant traditional saree with authentic fabric drape, detailed borders, and natural folds, complemented by traditional jewelry and delicate accessories.';
-  } else {
-    p3 = 'Clothing and styling remain authentic to the reference subjects, capturing natural fabric weaves, everyday creases, and subtle accessories with zero synthetic perfection.';
+  // Extract custom styling hints from user prompt
+  let stylingDetail = 'Clothing and styling remain grounded in everyday authenticity';
+  if (/kurta/i.test(pLower)) {
+    stylingDetail = 'Styling features authentic textured kurtas with realistic fabric weaves and subtle creases';
+  } else if (/saree|sari/i.test(pLower)) {
+    stylingDetail = 'Styling features an elegant traditional saree with authentic fabric drape and delicate accessories';
+  } else if (/naruto|graphic|tee|t-shirt/i.test(pLower)) {
+    stylingDetail = 'Styling features casual everyday streetwear with realistic cotton weaves and natural fabric folds';
+  } else if (/dress|crochet/i.test(pLower)) {
+    stylingDetail = 'Styling features authentic textured casual wear with delicate stitch details and soft folds';
   }
 
-  // Paragraph 4: Lighting, Camera & Smartphone Realism (Master Paragraph)
-  const p4 = 'Soft natural ambient lighting, subtle exposure variations, mobile-camera sensor softness, authentic skin pores, slight flyaway hair, and imperfect handheld framing complete the authentic smartphone look. It is perfect for creating a special memorable photo to share with your boyfriend or girlfriend, a sweet and memorable way to share everyday romance.';
+  // Paragraph 1: Scene & Candid Pose (weaves kws[0], kws[1], kws[2])
+  const p1 = `This creative photography specification brings to life ${sceneDesc} optimized for ${kws[0] || 'realistic couple prompt'} and ${kws[1] || 'gemini couple prompt'}. Featuring spontaneous closeness, genuine eye contact, and playful unposed chemistry, the composition captures authentic ${kws[2] || 'couple photo'} with unscripted romantic warmth.`;
+
+  // Paragraph 2: Facial Realism & Strict Identity Preservation (weaves kws[3], kws[4])
+  const p2 = `Strict facial identity preservation is maintained as the highest priority for ${kws[3] || 'couple aesthetic'}, faithfully retaining reference facial structure, authentic eye contours, natural asymmetry, and lifelike skin pores. Avoiding synthetic beautification or artificial smoothing ensures true-to-life realism for ${kws[4] || 'realistic couple prompt'}.`;
+
+  // Paragraph 3: Outfits, Styling & Everyday Texture (weaves kws[5], kws[6])
+  const p3 = `${stylingDetail} tailored for ${kws[5] || 'trending prompt girls'}, capturing organic fabric weaves, soft creases, and understated accessories. Every frame reflects unposed styling tailored for ${kws[6] || 'trending prompt boys'} with zero synthetic perfection.`;
+
+  // Paragraph 4: Lighting, Smartphone Realism & Romance (weaves kws[7], kws[8], kws[9])
+  const p4 = `Soft natural ambient lighting, subtle exposure variations, and mobile camera sensor softness elevate this visual for ${kws[7] || 'candid couple photo'} and ${kws[8] || 'couple selfie poses'}. Ideal for anyone exploring ${kws[9] || 'smartphone couple photo'}, it provides a sweet, memorable way to capture everyday romance in an authentic smartphone snapshot.`;
 
   const fullPrompt = `${p1}\n\n${p2}\n\n${p3}\n\n${p4}`;
   return enforceWordLimit(fullPrompt, 199);
@@ -179,24 +264,18 @@ export function generateSmartAboutPrompt(input: GenerationInput): string {
 
 /**
  * Smart synthesis generator for "SEO Meta Description" (Strictly < 160 chars)
+ * Weaves 3 keywords: 2 random pinned + 1 random unpinned into a natural SERP sentence.
  */
-export function generateSmartSeoDescription(input: GenerationInput): string {
-  const pinnedKws = input.pinnedKeywords || [];
-  let primaryHook = '';
+export function generateSmartSeoDescription(
+  input: GenerationInput,
+  partition?: ArigatoSiteKeywordPartition
+): string {
+  const parts = partition || partitionArigatoSiteKeywords(input);
+  const [k1, k2, k3] = parts.descKeywords;
 
-  if (pinnedKws.length >= 2) {
-    primaryHook = `${pinnedKws[0]} & ${pinnedKws[1]}`;
-  } else if (pinnedKws.length === 1) {
-    primaryHook = pinnedKws[0];
-  } else if (input.activeKeywords && input.activeKeywords.length > 0) {
-    primaryHook = input.activeKeywords[0];
-  } else {
-    primaryHook = 'realistic couple prompt';
-  }
-
-  let desc = `Realistic couple AI prompt for ${primaryHook}, strict facial identity preservation, warm natural lighting, and candid smartphone realism.`;
+  let desc = `Couple AI prompt for ${k1} & ${k2} with ${k3}, strict face identity, natural lighting, and candid smartphone realism.`;
   if (desc.length > 160) {
-    desc = `Couple AI prompt with ${primaryHook}, strict face identity, natural lighting, and candid smartphone realism.`;
+    desc = `AI prompt for ${k1} and ${k2}, featuring ${k3}, strict face identity, and authentic smartphone realism.`;
   }
   if (desc.length > 160) {
     desc = enforceCharLimit(desc, 160);
@@ -205,56 +284,14 @@ export function generateSmartSeoDescription(input: GenerationInput): string {
 }
 
 /**
- * Smart synthesis generator for "SEO Keywords" (Strictly 6 to 9 items)
+ * Smart synthesis generator for "SEO Keywords" (Strictly 9 tags: 4 random pinned + 5 random unpinned)
  */
-export function generateSmartKeywords(input: GenerationInput): string[] {
-  const pinnedKws = input.pinnedKeywords || [];
-  const otherKws = (input.activeKeywords || []).filter((k) => !pinnedKws.includes(k));
-
-  const result: string[] = [];
-
-  // 1. Mandatory Pinned Keywords always first
-  for (const kw of pinnedKws) {
-    const clean = kw.trim().toLowerCase();
-    if (clean && !result.includes(clean)) {
-      result.push(clean);
-    }
-  }
-
-  // 2. Add active contextual keywords
-  for (const kw of otherKws) {
-    const clean = kw.trim().toLowerCase();
-    if (clean && !result.includes(clean) && result.length < 6) {
-      result.push(clean);
-    }
-  }
-
-  // 3. High-intent couple prompt search queries from master pool
-  const masterPool = [
-    'gemini couple prompt',
-    'gemini couple prompt instagram',
-    'realistic couple prompt for gemini ai',
-    'couple prompt',
-    'couple photo',
-    'couple aesthetic',
-    'best ai prompt for couples',
-    'romantic prompt ideas',
-    'candid couple photo',
-    'smartphone couple photo',
-  ];
-
-  for (const tag of masterPool) {
-    if (!result.includes(tag) && result.length < 9) {
-      result.push(tag);
-    }
-  }
-
-  // Ensure count is strictly between 6 and 9
-  let finalKws = result.slice(0, 9);
-  if (finalKws.length < 6) {
-    finalKws.push('couple pictures', 'romantic couple ai prompts');
-  }
-  return finalKws.slice(0, 9);
+export function generateSmartKeywords(
+  input: GenerationInput,
+  partition?: ArigatoSiteKeywordPartition
+): string[] {
+  const parts = partition || partitionArigatoSiteKeywords(input);
+  return parts.tagKeywords.map((k) => k.trim().toLowerCase());
 }
 
 function rotateArray<T>(arr: T[], offset: number): T[] {
@@ -520,28 +557,33 @@ export async function generateArigatoSiteSeo(
 ): Promise<ArigatoSiteSeoResult> {
   const config = getStoredApiConfig();
 
+  // Partition keywords according to strict user rules:
+  // - About: 10 keywords in sentences (5 pinned + 5 random unpinned)
+  // - Meta Description: 3 keywords in sentence (2 random pinned + 1 random unpinned)
+  // - Tags: 9 tags (4 random pinned + 5 random unpinned)
+  const partition = partitionArigatoSiteKeywords(input);
+
   // Step 1: Scan
-  onProgress?.(1, 'Scanning artwork framing, lighting balance and atmosphere...');
+  onProgress?.(1, 'Scanning visual composition, lighting balance and subjects...');
   await new Promise((r) => setTimeout(r, 600));
 
   // Step 2: Extract Prompt Metadata
-  onProgress?.(2, 'Parsing prompt structure, visual modifiers & style parameters...');
+  onProgress?.(2, 'Analyzing prompt aesthetics, camera framing & realism parameters...');
   await new Promise((r) => setTimeout(r, 650));
 
   // Step 3: Inject Target Keywords
-  const pinnedCount = input.pinnedKeywords?.length || 0;
-  onProgress?.(3, `Integrating ${input.activeKeywords.length} keywords (${pinnedCount} pinned mandatory)...`);
+  onProgress?.(3, `Partitioning keywords: 10 for About, 3 for Meta, 9 for Tags...`);
   await new Promise((r) => setTimeout(r, 600));
 
   // Step 4: Strict Length Audits
-  onProgress?.(4, 'Validating strict limits: <199 words (About) and <160 chars (SEO Meta)...');
+  onProgress?.(4, 'Synthesizing: <199 words (About), <160 chars (Meta), 9 Tags...');
   await new Promise((r) => setTimeout(r, 650));
 
   // If live API key or Modal proxy tokens are available, call custom API handler
   const activeApiKey = resolveApiKey(config);
   if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
     try {
-      const liveResult = await executeCustomSiteApi(input, config);
+      const liveResult = await executeCustomSiteApi(input, config, partition);
       if (
         liveResult &&
         liveResult.aboutPrompt &&
@@ -549,22 +591,22 @@ export async function generateArigatoSiteSeo(
         liveResult.seoDescription &&
         liveResult.seoDescription.trim().length > 10 &&
         liveResult.keywords &&
-        liveResult.keywords.length >= 6
+        liveResult.keywords.length === 9
       ) {
         return liveResult;
       }
-      console.warn('[Site SEO] Custom API returned empty or insufficient output, falling back to smart engine');
+      console.warn('[Site SEO] Custom API returned incomplete output, falling back to smart engine');
     } catch (err) {
       console.warn('Custom API execution failed, falling back to smart engine:', err);
     }
   }
 
   // Fallback to Smart Dynamic Generator based on the 10 Master Examples
-  const aboutPrompt = generateSmartAboutPrompt(input);
+  const aboutPrompt = generateSmartAboutPrompt(input, partition);
   const wordCount = countWords(aboutPrompt);
-  const seoDescription = generateSmartSeoDescription(input);
+  const seoDescription = generateSmartSeoDescription(input, partition);
   const charCount = seoDescription.length;
-  const keywords = generateSmartKeywords(input);
+  const keywords = generateSmartKeywords(input, partition);
 
   return {
     aboutPrompt,
@@ -572,7 +614,7 @@ export async function generateArigatoSiteSeo(
     seoDescription,
     charCount,
     keywords,
-    keywordsMatched: (input.pinnedKeywords || []).concat(input.activeKeywords).slice(0, 4),
+    keywordsMatched: partition.aboutKeywords,
     siteMetaTitle: `Realistic Couple AI Prompt — Arigato Labs`,
   };
 }
@@ -895,37 +937,53 @@ Do NOT include markdown fences or think tags in the JSON.`;
   };
 }
 
-async function executeCustomSiteApi(input: GenerationInput, config: ApiConfig): Promise<ArigatoSiteSeoResult> {
+async function executeCustomSiteApi(
+  input: GenerationInput,
+  config: ApiConfig,
+  partition: ArigatoSiteKeywordPartition
+): Promise<ArigatoSiteSeoResult> {
   const headers = buildAuthHeaders(config);
   const endpoint = resolveApiUrl(config);
 
-  const systemContent = `You are an expert AI prompt engineer and Google SEO specialist for Arigato Labs.
-Analyze the user's prompt (typically realistic couple photography, portraits, candid moments, or multi-frame collages) and generate a production-ready image recreation specification, an ultra-focused Google SERP meta description, and high-intent SEO tags.
+  const systemContent = `You are the dedicated Google SEO & AI Prompt Specialist for Arigato Site SEO Studio (Arigato Labs).
+Your task is to analyze the user's prompt text and reference visual to generate a production-ready image recreation specification, a high-converting Google SERP meta description, and 9 SEO tags.
 
-FORMAT & CRITICAL OUTPUT RULES:
+ENVIRONMENT NOTICE:
+This is for "Arigato Site SEO" (NOT Pinterest). Do NOT generate Pinterest board recommendations, Pinterest pin titles, or Pinterest hashtags.
 
-1. "aboutPrompt": MUST BE STRICTLY UNDER 199 WORDS (target 130 to 185 words) written in clear, natural English across 4 cohesive paragraphs:
-   - Paragraph 1 (Scene & Candid Pose): Detail the subjects, specific setting (e.g. warm cafe, wooden elevator, cloudy balcony, indoor room, 3-frame collage), exact physical poses (e.g. nose-to-nose, leaning toward, cheek holding, cheek squishing, playful pouts, winking, touching heads, gripping scarf, covering eyes), and genuine affectionate chemistry.
-   - Paragraph 2 (Strict Identity Preservation): MUST include these exact realism principles: "Strict facial identity preservation is the highest priority. Preserve both reference identities with strict accuracy, including facial structure, proportions, eyes, nose, lips, skin tone, natural asymmetry, hairline, hairstyle, and authentic skin texture. Keep any reference glasses unchanged. Avoid beautification, skin smoothing, artificial glow, cinematic grading, or polished AI aesthetics."
-   - Paragraph 3 (Exact Outfits & Accessories): Faithfully describe specific clothing worn or mentioned (e.g. blush pink kurta, blue textured kurta with fabric weave, purple crochet dress, Naruto graphic tee, hats, sarees) and accessories (jhumka earrings, rings, bracelets, watches, glasses).
-   - Paragraph 4 (Lighting, Camera & Smartphone Realism): Detail realistic lighting (soft overcast daylight, warm amber indoor bulbs, overhead elevator glow, natural window light) and camera framing (9:16 vertical smartphone camera, low table-level angle, subtle sensor noise, realistic pores, hair flyaways, fabric wrinkles, slight lens distortion, and imperfect handheld framing). The final result should feel like a spontaneous smartphone snapshot. Conclude with: "It's perfect for creating a special memorable picture to share with your boyfriend or girlfriend, a sweet and memorable way to share everyday romance."
+CRITICAL KEYWORD RULES (STRICT COMPLIANCE REQUIRED):
+We have pre-selected the exact keywords you must use for each section:
 
-2. "seoDescription": MUST BE STRICTLY UNDER 160 CHARACTERS (target 125 to 155 characters).
-   A natural, click-worthy Google SERP meta description in simple, clear English summarizing the prompt scene, outfits, lighting, and smartphone realism.
-   MUST naturally incorporate any mandatory pinned keywords.
+1. "aboutPrompt" (10 MANDATORY KEYWORDS):
+   - You MUST naturally weave ALL 10 of these keywords into fluent, human, grammatically complete sentences across 4 structured paragraphs:
+     * 5 Pinned Keywords: ${partition.aboutPinned.join(', ')}
+     * 5 Contextual Keywords: ${partition.aboutUnpinned.join(', ')}
+     * Total 10 Target Keywords: ${partition.aboutKeywords.join(', ')}
+   - STRICT CONSTRAINT: Word count MUST be UNDER 199 words (target 140 to 180 words).
+   - ANTI-KEYWORD-STUFFING: ABSOLUTELY NEVER output a comma-separated list of keywords. Every keyword MUST be woven naturally into a sentence describing the scene, facial realism, styling, or smartphone photography.
+   - Paragraph Guidelines:
+     * Para 1 (Scene & Candid Pose): Detail the subjects, setting (e.g. 3-frame collage, cafe, elevator, room), and spontaneous affection. Weave 3 keywords naturally.
+     * Para 2 (Strict Identity Preservation): Emphasize reference facial structure, authentic eye contours, natural skin pores, avoiding beautification and AI smoothing. Weave 2 keywords naturally.
+     * Para 3 (Exact Outfits & Everyday Styling): Describe authentic clothing fabrics, creases, and unposed styling. Weave 2 keywords naturally.
+     * Para 4 (Lighting, Smartphone Camera Realism & Romance): Describe natural ambient lighting, mobile camera sensor softness, and everyday romance. Weave 3 keywords naturally.
 
-3. "keywords": MUST CONTAIN STRICTLY 6 TO 9 high-intent, real search queries that people search on Google, Pinterest, and Instagram.
-   - MUST include ALL PINNED KEYWORDS.
-   - Include scene-specific phrases and high-intent queries (e.g. "Gemini couple prompt", "realistic couple prompt for Gemini AI", "couple prompt").
+2. "seoDescription" (3 MANDATORY KEYWORDS):
+   - STRICT CONSTRAINT: MUST BE STRICTLY UNDER 160 CHARACTERS (target 130 to 155 characters).
+   - Naturally weave these 3 keywords into a compelling Google SERP meta description sentence:
+     * 2 Pinned Keywords: ${partition.descPinned.join(', ')}
+     * 1 Unpinned Keyword: ${partition.descUnpinned.join(', ')}
+     * Total 3 Target Keywords: ${partition.descKeywords.join(', ')}
 
-4. "siteMetaTitle": A punchy SERP title under 65 chars (e.g. "Realistic Couple AI Prompt — Arigato Labs").
+3. "keywords" (EXACTLY 9 KEYWORD TAGS):
+   - Return an array of EXACTLY 9 keyword tags consisting of:
+     [${partition.tagKeywords.map((k) => `"${k}"`).join(', ')}]
 
-PINNED KEYWORDS (MANDATORY - MUST BE INCLUDED): ${input.pinnedKeywords?.join(', ') || 'None'}
-ACTIVE CONTEXTUAL KEYWORDS: ${input.activeKeywords.join(', ')}
+4. "siteMetaTitle":
+   - A concise SERP title under 65 chars (e.g. "Realistic Couple AI Prompt — Arigato Labs").
 
 OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDescription", "keywords", "siteMetaTitle". Do NOT include markdown commentary or think tags in the JSON.`;
 
-  const userTextPrompt = `Create the prompt recreation specification for:\n"${input.prompt || 'Realistic couple photo'}"\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nActive Target Keywords: ${input.activeKeywords.join(', ')}`;
+  const userTextPrompt = `Create the authoritative Arigato Site SEO package for:\nPrompt: "${input.prompt || 'Realistic couple photo'}"\n\nREQUIRED KEYWORD ASSIGNMENTS:\n- About This Prompt (weave all 10 in sentences): ${partition.aboutKeywords.join(', ')}\n- SEO Meta Description (weave all 3 in sentence): ${partition.descKeywords.join(', ')}\n- Exact 9 Tags: ${partition.tagKeywords.join(', ')}`;
 
   const buildPayload = (includeImage: boolean) => {
     const messages: any[] = [
@@ -998,62 +1056,34 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDes
   // Flexible key extraction
   let rawAbout = parsed.aboutPrompt || parsed.about_prompt || parsed.about_this_prompt || parsed.aboutThisPrompt || parsed.prompt || parsed.about || '';
   let rawSeoDesc = parsed.seoDescription || parsed.seo_description || parsed.meta_description || parsed.metaDescription || parsed.description || '';
-  let rawKeywords: string[] = Array.isArray(parsed.keywords)
-    ? parsed.keywords
-    : (Array.isArray(parsed.seo_keywords) ? parsed.seo_keywords : (Array.isArray(parsed.tags) ? parsed.tags : []));
 
-  // FAIL-SAFE CHECKS: Never allow empty or underspecified output to reach the user!
-  let aboutPrompt = (typeof rawAbout === 'string' && countWords(rawAbout) >= 25)
+  const smartBackup = {
+    aboutPrompt: generateSmartAboutPrompt(input, partition),
+    seoDescription: generateSmartSeoDescription(input, partition),
+    keywords: generateSmartKeywords(input, partition),
+  };
+
+  // Fail-safe check for aboutPrompt:
+  // If the model echoed the raw input prompt verbatim or is too short (< 40 words), or didn't weave the keywords:
+  let aboutPrompt = rawAbout && typeof rawAbout === 'string' && countWords(rawAbout) >= 40
     ? enforceWordLimit(rawAbout, 199)
-    : generateSmartAboutPrompt(input);
+    : smartBackup.aboutPrompt;
 
-  let seoDescription = (typeof rawSeoDesc === 'string' && rawSeoDesc.trim().length >= 15)
+  // Verify that aboutPrompt contains at least 5 of the target keywords; if not, use smartBackup
+  const matchedKws = partition.aboutKeywords.filter(k => aboutPrompt.toLowerCase().includes(k.toLowerCase()));
+  if (matchedKws.length < 5) {
+    aboutPrompt = smartBackup.aboutPrompt;
+  }
+  aboutPrompt = enforceWordLimit(aboutPrompt, 199);
+
+  // Fail-safe check for seoDescription:
+  let seoDescription = rawSeoDesc && typeof rawSeoDesc === 'string' && rawSeoDesc.trim().length >= 20 && rawSeoDesc.trim().length <= 160
     ? enforceCharLimit(rawSeoDesc, 160)
-    : generateSmartSeoDescription(input);
+    : smartBackup.seoDescription;
 
-  // Ensure all pinned keywords are inside description
-  const pinnedKws = input.pinnedKeywords || [];
-  for (const pk of pinnedKws) {
-    if (!seoDescription.toLowerCase().includes(pk.toLowerCase())) {
-      const candidate = `${pk} - ${seoDescription}`;
-      if (candidate.length <= 160) {
-        seoDescription = candidate;
-      }
-    }
-  }
-  seoDescription = enforceCharLimit(seoDescription, 160);
-
-  // Process keywords
-  let keywords: string[] = [];
-  if (Array.isArray(rawKeywords) && rawKeywords.length > 0) {
-    for (const kw of rawKeywords) {
-      if (typeof kw === 'string') {
-        const clean = kw.trim().toLowerCase().replace(/^#/, '');
-        if (clean && !keywords.includes(clean)) {
-          keywords.push(clean);
-        }
-      }
-    }
-  }
-
-  // Mandatorily prepend all pinned keywords
-  for (let i = pinnedKws.length - 1; i >= 0; i--) {
-    const pkClean = pinnedKws[i].trim().toLowerCase();
-    if (pkClean && !keywords.includes(pkClean)) {
-      keywords.unshift(pkClean);
-    }
-  }
-
-  // Ensure at least 6 and up to 9 keywords
-  if (keywords.length < 6) {
-    const fallbackKws = generateSmartKeywords(input);
-    for (const fb of fallbackKws) {
-      if (!keywords.includes(fb) && keywords.length < 9) {
-        keywords.push(fb);
-      }
-    }
-  }
-  keywords = keywords.slice(0, 9);
+  // Fail-safe check for keywords:
+  // Strictly return the 9 tags (4 pinned + 5 unpinned)
+  const keywords = partition.tagKeywords;
 
   return {
     aboutPrompt,
@@ -1061,7 +1091,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDes
     seoDescription,
     charCount: seoDescription.length,
     keywords,
-    keywordsMatched: input.activeKeywords,
+    keywordsMatched: partition.aboutKeywords,
     siteMetaTitle: parsed.siteMetaTitle || parsed.site_meta_title || parsed.title || 'Realistic Couple AI Prompt — Arigato Labs',
   };
 }

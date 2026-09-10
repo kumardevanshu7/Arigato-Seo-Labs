@@ -58,6 +58,11 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
     const trimmed = singleInput.trim();
     if (!trimmed) return;
 
+    if (currentList.length >= 30) {
+      alert(`Maximum 30 keywords allowed for ${selectedTab === 'pinterest' ? 'Pinterest' : 'Arigato Site'}. Please delete an existing keyword to add a new one.`);
+      return;
+    }
+
     if (currentList.some((k) => k.text.toLowerCase() === trimmed.toLowerCase())) {
       alert('This keyword is already in your repository.');
       return;
@@ -76,6 +81,13 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
 
   const handleBulkAdd = () => {
     if (!bulkInput.trim()) return;
+
+    const availableSlots = 30 - currentList.length;
+    if (availableSlots <= 0) {
+      alert(`Maximum 30 keywords limit reached for ${selectedTab === 'pinterest' ? 'Pinterest' : 'Arigato Site'}. Please delete some keywords first.`);
+      return;
+    }
+
     const splitKeywords = bulkInput
       .split(/[\n,]+/)
       .map((k) => k.trim())
@@ -96,7 +108,17 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
       }
     });
 
-    updateCurrentList([...newItems, ...currentList]);
+    if (newItems.length === 0) {
+      alert('All provided keywords are already in your repository.');
+      return;
+    }
+
+    const itemsToAdd = newItems.slice(0, availableSlots);
+    if (newItems.length > availableSlots) {
+      alert(`Added ${itemsToAdd.length} keywords. Maximum limit is 30 (${newItems.length - availableSlots} extra keywords were skipped).`);
+    }
+
+    updateCurrentList([...itemsToAdd, ...currentList]);
     setBulkInput('');
     setShowBulkAdd(false);
   };
@@ -108,6 +130,15 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
 
   const toggleKeywordPin = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const item = currentList.find((k) => k.id === id);
+    if (!item) return;
+
+    // Strict rule: maximum 5 keywords can be pinned
+    if (!item.isPinned && pinnedCount >= 5) {
+      alert('Maximum 5 keywords can be pinned at a time. Please unpin another keyword first.');
+      return;
+    }
+
     const updated = currentList.map((k) => {
       if (k.id === id) {
         const nextPinned = !k.isPinned;
@@ -147,17 +178,19 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
                 Keywords Repository
               </h2>
               <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-[#5645d4] text-white font-medium">
-                Active: {activeCount}/{currentList.length}
+                Active: {activeCount}/{currentList.length} ({currentList.length}/30 max)
               </span>
-              <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-[#fef3c7] border border-[#fde047] text-[#92400e] font-semibold flex items-center gap-1">
-                <Pin className="w-3 h-3" /> Pinned: {pinnedCount}
+              <span className={`text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full border font-semibold flex items-center gap-1 ${
+                pinnedCount >= 5 ? 'bg-[#fee2e2] border-[#fca5a5] text-[#b91c1c]' : 'bg-[#fef3c7] border-[#fde047] text-[#92400e]'
+              }`}>
+                <Pin className="w-3 h-3" /> Pinned: {pinnedCount}/5 max
               </span>
               <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-[#e0f2fe] border border-[#bae6fd] text-[#0369a1] font-semibold flex items-center gap-1">
                 <Cloud className="w-3 h-3" /> Firestore {isFirestoreConnected ? 'Live' : 'Syncing'}
               </span>
             </div>
             <p className="text-[11px] sm:text-xs text-[#787671] mt-0.5">
-              Configured terms injected into generated outputs.
+              Rules: Max 30 keywords per space • Max 5 pinned keywords.
             </p>
           </div>
           <button
@@ -301,22 +334,41 @@ export const KeywordsDrawer: React.FC<KeywordsDrawerProps> = ({
 
         {/* Add Keywords Section */}
         <div className="p-3.5 sm:p-5 border-b border-[#ede9e4] bg-[#fafaf9]">
-          <form onSubmit={handleAddSingle} className="flex gap-2 mb-2">
+          <form onSubmit={handleAddSingle} className="flex gap-2 mb-1.5">
             <input
               type="text"
               value={singleInput}
               onChange={(e) => setSingleInput(e.target.value)}
-              placeholder={`Add ${selectedTab === 'pinterest' ? 'Pinterest' : 'Site'} keyword...`}
-              className="flex-1 px-3 py-2 text-sm sm:text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] text-[#1a1a1a]"
+              disabled={currentList.length >= 30}
+              placeholder={
+                currentList.length >= 30
+                  ? `Limit reached (30/30). Delete keywords to add more.`
+                  : `Add ${selectedTab === 'pinterest' ? 'Pinterest' : 'Site'} keyword (${currentList.length}/30)...`
+              }
+              className={`flex-1 px-3 py-2 text-sm sm:text-xs border rounded-md focus:outline-none transition-all ${
+                currentList.length >= 30
+                  ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border-[#c8c4be] focus:border-[#5645d4] text-[#1a1a1a]'
+              }`}
             />
             <button
               type="submit"
-              className="flex items-center gap-1 px-3.5 py-2 bg-[#5645d4] text-white text-xs font-semibold rounded-md hover:bg-[#4534b3] transition-colors cursor-pointer shrink-0"
+              disabled={currentList.length >= 30}
+              className={`flex items-center gap-1 px-3.5 py-2 text-xs font-semibold rounded-md transition-colors shrink-0 ${
+                currentList.length >= 30
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-[#5645d4] hover:bg-[#4534b3] text-white cursor-pointer'
+              }`}
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add</span>
             </button>
           </form>
+          {currentList.length >= 30 && (
+            <p className="text-[10px] text-red-600 font-semibold mb-1">
+              ⚠️ Maximum repository capacity of 30 keywords reached.
+            </p>
+          )}
 
           <div className="flex items-center justify-between text-xs pt-1">
             <button

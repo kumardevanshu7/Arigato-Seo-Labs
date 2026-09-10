@@ -130,7 +130,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
               </div>
               <div className="p-2 sm:p-2.5 rounded-lg bg-[#fafaf9] border border-[#ede9e4] text-center">
                 <span className="text-[9px] sm:text-[10px] text-[#787671] block font-medium leading-tight">Keywords</span>
-                <span className="text-[11px] sm:text-xs font-bold text-[#dd5b00]">6 to 9 Tags</span>
+                <span className="text-[11px] sm:text-xs font-bold text-[#dd5b00]">9 Tags</span>
               </div>
             </div>
 
@@ -218,7 +218,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                 </div>
               )}
               <p className="text-[10px] text-[#787671] mt-2">
-                📌 Pinned keywords are forced into the description. System balances other active terms for &lt;199 words &amp; &lt;160 chars.
+                📌 Rules: 10 keywords in About (5 Pinned + 5 Unpinned) • 3 in Meta Desc (2 Pinned + 1 Unpinned) • 9 Tags (4 Pinned + 5 Unpinned).
               </p>
             </div>
 
@@ -447,13 +447,13 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                     {/* Count verification badge */}
                     <span
                       className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                        result.keywords.length >= 6 && result.keywords.length <= 9
+                        result.keywords.length === 9
                           ? 'bg-[#22c55e]/15 text-[#4ade80] border border-[#22c55e]/30'
                           : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                       }`}
                     >
                       <CheckCircle2 className="w-3 h-3" />
-                      <span>{result.keywords.length} tags (Rule: 6–9)</span>
+                      <span>{result.keywords.length} tags (4 Pin • 5 Unpin)</span>
                     </span>
 
                     {/* Copy Button */}
