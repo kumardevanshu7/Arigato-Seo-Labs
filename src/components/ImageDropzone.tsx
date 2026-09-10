@@ -40,17 +40,57 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
+      const rawDataUrl = e.target?.result as string;
       const img = new Image();
       img.onload = () => {
+        const origWidth = img.naturalWidth;
+        const origHeight = img.naturalHeight;
+
+        // Downscale large images (max 1200px) to prevent multi-megabyte payloads
+        const maxDim = 1200;
+        let targetWidth = origWidth;
+        let targetHeight = origHeight;
+
+        if (origWidth > maxDim || origHeight > maxDim) {
+          if (origWidth > origHeight) {
+            targetHeight = Math.round((origHeight * maxDim) / origWidth);
+            targetWidth = maxDim;
+          } else {
+            targetWidth = Math.round((origWidth * maxDim) / origHeight);
+            targetHeight = maxDim;
+          }
+        }
+
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+            const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+            const approxBytes = Math.round((optimizedDataUrl.length * 3) / 4);
+            const sizeMb = (approxBytes / (1024 * 1024)).toFixed(2);
+            setImageMeta({
+              name: file.name,
+              size: `${sizeMb} MB`,
+              dimensions: `${targetWidth} × ${targetHeight}px`,
+            });
+            onImageSelected(optimizedDataUrl, file.name);
+            return;
+          }
+        } catch {
+          // Fallback to raw data url if canvas draw fails
+        }
+
         setImageMeta({
           name: file.name,
           size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-          dimensions: `${img.naturalWidth} × ${img.naturalHeight}px`,
+          dimensions: `${origWidth} × ${origHeight}px`,
         });
+        onImageSelected(rawDataUrl, file.name);
       };
-      img.src = dataUrl;
-      onImageSelected(dataUrl, file.name);
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   };

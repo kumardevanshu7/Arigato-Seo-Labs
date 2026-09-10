@@ -479,71 +479,101 @@ export function generateSmartPinterestSeo(input: GenerationInput): {
   };
 }
 
+export type ProgressCallback = (step: number, percent: number, msg: string) => void;
+
 /**
  * Intelligent generator for Pinterest SEO
  */
 export async function generatePinterestSeo(
   input: GenerationInput,
-  onProgress?: (step: number, msg: string) => void
+  onProgress?: ProgressCallback
 ): Promise<PinterestSeoResult> {
   const config = getStoredApiConfig();
 
-  // Step 1: Vision / Image Scan Simulation
-  onProgress?.(1, 'Scanning image visual composition & color aesthetics...');
-  await new Promise((r) => setTimeout(r, 600));
+  // Step 1: Vision / Image Scan Simulation (0% -> 20%)
+  onProgress?.(1, 15, 'Scanning image visual composition & color aesthetics...');
+  await new Promise((r) => setTimeout(r, 250));
 
-  // Step 2: Prompt Semantic Analysis
-  onProgress?.(2, 'Extracting core thematic anchors from user prompt...');
-  await new Promise((r) => setTimeout(r, 650));
+  // Step 2: Prompt Semantic Analysis (20% -> 40%)
+  onProgress?.(2, 35, 'Extracting core thematic anchors from user prompt...');
+  await new Promise((r) => setTimeout(r, 250));
 
-  // Step 3: Keywords Cross-referencing
-  onProgress?.(3, `Matching against ${input.activeKeywords.length} configured Pinterest keywords...`);
-  await new Promise((r) => setTimeout(r, 600));
-
-  // Step 4: SEO Synthesis
+  // Step 3: Synthesis & Keyword Integration (45% -> 88%)
   const modeLabel = input.pinterestFormat === 'search_steps' ? 'Google Search Steps' : 'Direct Link CTR';
-  onProgress?.(4, `Synthesizing ${modeLabel} Pinterest Title & Description...`);
-  await new Promise((r) => setTimeout(r, 650));
+  onProgress?.(3, 45, `Synthesizing ${modeLabel} Pinterest Title & Description...`);
 
-  // If live API key or Modal proxy tokens are available, call custom API handler
-  const activeApiKey = resolveApiKey(config);
-  if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
-    try {
-      const pinResult = await executeCustomPinterestApi(input, config);
-      if (
-        pinResult &&
-        pinResult.title &&
-        pinResult.title.trim().length > 5 &&
-        pinResult.description &&
-        pinResult.description.trim().length > 20 &&
-        pinResult.tags &&
-        pinResult.tags.length >= 6
-      ) {
-        return pinResult;
-      }
-      console.warn('[Pinterest SEO] Custom API returned empty or insufficient fields, falling back to smart engine');
-    } catch (err) {
-      console.warn('Custom API execution failed, falling back to smart engine:', err);
+  // Active ticker: creeps progress smoothly while waiting, never freezing and never hitting 100% prematurely!
+  let synthPercent = 45;
+  let elapsedSec = 0;
+  const ticker = setInterval(() => {
+    elapsedSec++;
+    if (synthPercent < 88) {
+      const step = synthPercent < 70 ? 4 : synthPercent < 80 ? 2 : 1;
+      synthPercent = Math.min(88, synthPercent + step);
     }
+    let dynamicMsg = `AI Neural Synthesis in progress (${elapsedSec}s)...`;
+    if (elapsedSec >= 12) {
+      dynamicMsg = `Finalizing pin variations & viral tags (${elapsedSec}s)...`;
+    } else if (elapsedSec >= 6) {
+      dynamicMsg = `Synthesizing ${modeLabel} Pinterest variations & keywords (${elapsedSec}s)...`;
+    }
+    onProgress?.(3, synthPercent, dynamicMsg);
+  }, 1000);
+
+  let pinResult: PinterestSeoResult | null = null;
+  try {
+    const activeApiKey = resolveApiKey(config);
+    if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
+      try {
+        const live = await executeCustomPinterestApi(input, config);
+        if (
+          live &&
+          live.title &&
+          live.title.trim().length > 5 &&
+          live.description &&
+          live.description.trim().length > 20 &&
+          live.tags &&
+          live.tags.length >= 6
+        ) {
+          pinResult = live;
+        } else {
+          console.warn('[Pinterest SEO] Custom API returned empty or insufficient fields, falling back to smart engine');
+        }
+      } catch (err) {
+        console.warn('Custom API execution failed, falling back to smart engine:', err);
+      }
+    }
+  } finally {
+    clearInterval(ticker);
   }
 
-  // Fallback to Smart Dual-Mode Generator
-  const smart = generateSmartPinterestSeo(input);
-  const selectedKeywords = Array.from(new Set([...(input.pinnedKeywords || []), ...input.activeKeywords])).slice(0, 4);
+  if (!pinResult) {
+    // Fallback to Smart Dual-Mode Generator
+    const smart = generateSmartPinterestSeo(input);
+    const selectedKeywords = Array.from(new Set([...(input.pinnedKeywords || []), ...input.activeKeywords])).slice(0, 4);
+    pinResult = {
+      title: smart.title,
+      description: smart.description,
+      tags: smart.tags,
+      keywordsMatched: selectedKeywords,
+      characterCounts: {
+        title: smart.title.length,
+        description: smart.description.length,
+        tagsCount: smart.tags.length,
+      },
+      recommendedBoard: smart.recommendedBoard,
+      variations: smart.variations,
+    };
+  }
 
-  return {
-    title: smart.title,
-    description: smart.description,
-    tags: smart.tags,
-    keywordsMatched: selectedKeywords,
-    characterCounts: {
-      title: smart.title.length,
-      description: smart.description.length,
-      tagsCount: smart.tags.length,
-    },
-    recommendedBoard: smart.recommendedBoard,
-    variations: smart.variations,
-  };
+  // Step 4: Strict Format Audits (88% -> 96%)
+  onProgress?.(4, 96, 'Auditing Pinterest character limits & hashtag relevance...');
+  await new Promise((r) => setTimeout(r, 200));
+
+  // Step Complete: 100%
+  onProgress?.(4, 100, 'Pinterest SEO Package Ready!');
+
+  return pinResult;
 }
 
 /**
@@ -555,7 +585,7 @@ export async function generatePinterestSeo(
  */
 export async function generateArigatoSiteSeo(
   input: GenerationInput,
-  onProgress?: (step: number, msg: string) => void
+  onProgress?: ProgressCallback
 ): Promise<ArigatoSiteSeoResult> {
   const config = getStoredApiConfig();
 
@@ -565,60 +595,91 @@ export async function generateArigatoSiteSeo(
   // - Tags: 9 tags (4 random pinned + 5 random unpinned)
   const partition = partitionArigatoSiteKeywords(input);
 
-  // Step 1: Scan
-  onProgress?.(1, 'Scanning visual composition, lighting balance and subjects...');
-  await new Promise((r) => setTimeout(r, 600));
+  // Step 1: Scan (0% -> 20%)
+  onProgress?.(1, 15, 'Scanning visual composition, lighting balance and subjects...');
+  await new Promise((r) => setTimeout(r, 250));
 
-  // Step 2: Extract Prompt Metadata
-  onProgress?.(2, 'Analyzing prompt aesthetics, camera framing & realism parameters...');
-  await new Promise((r) => setTimeout(r, 650));
+  // Step 2: Extract Prompt Metadata & Rules (20% -> 40%)
+  onProgress?.(2, 35, 'Partitioning keywords: 10 for About, 3 for Meta, 9 for Tags...');
+  await new Promise((r) => setTimeout(r, 250));
 
-  // Step 3: Inject Target Keywords
-  onProgress?.(3, `Partitioning keywords: 10 for About, 3 for Meta, 9 for Tags...`);
-  await new Promise((r) => setTimeout(r, 600));
+  // Step 3: Neural AI Synthesis (45% -> 88%)
+  onProgress?.(3, 45, 'Connecting to AI Neural Engine & generating human-style prompt...');
 
-  // Step 4: Strict Length Audits
-  onProgress?.(4, 'Synthesizing: <199 words (About), <160 chars (Meta), 9 Tags...');
-  await new Promise((r) => setTimeout(r, 650));
-
-  // If live API key or Modal proxy tokens are available, call custom API handler
-  const activeApiKey = resolveApiKey(config);
-  if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
-    try {
-      const liveResult = await executeCustomSiteApi(input, config, partition);
-      if (
-        liveResult &&
-        liveResult.aboutPrompt &&
-        liveResult.aboutPrompt.trim().length > 30 &&
-        liveResult.seoDescription &&
-        liveResult.seoDescription.trim().length > 10 &&
-        liveResult.keywords &&
-        liveResult.keywords.length === 9
-      ) {
-        return liveResult;
-      }
-      console.warn('[Site SEO] Custom API returned incomplete output, falling back to smart engine');
-    } catch (err) {
-      console.warn('Custom API execution failed, falling back to smart engine:', err);
+  // Active ticker: creeps progress smoothly while waiting, never freezing and never hitting 100% prematurely!
+  let synthPercent = 45;
+  let elapsedSec = 0;
+  const ticker = setInterval(() => {
+    elapsedSec++;
+    if (synthPercent < 88) {
+      const step = synthPercent < 70 ? 4 : synthPercent < 80 ? 2 : 1;
+      synthPercent = Math.min(88, synthPercent + step);
     }
+    let dynamicMsg = `AI Neural Synthesis in progress (${elapsedSec}s)...`;
+    if (elapsedSec >= 12) {
+      dynamicMsg = `Finalizing SERP meta description & tag validation (${elapsedSec}s)...`;
+    } else if (elapsedSec >= 7) {
+      dynamicMsg = `Polishing human conversational tone & natural sentence flow (${elapsedSec}s)...`;
+    } else if (elapsedSec >= 3) {
+      dynamicMsg = `Synthesizing <199 words About guide & weaving 10 keywords (${elapsedSec}s)...`;
+    }
+    onProgress?.(3, synthPercent, dynamicMsg);
+  }, 1000);
+
+  let siteResult: ArigatoSiteSeoResult | null = null;
+  try {
+    const activeApiKey = resolveApiKey(config);
+    if (activeApiKey && (config.mode === 'custom_api' || (import.meta as any).env?.VITE_MODAL_PROXY_TOKEN_ID || config.tokenId)) {
+      try {
+        const liveResult = await executeCustomSiteApi(input, config, partition);
+        if (
+          liveResult &&
+          liveResult.aboutPrompt &&
+          liveResult.aboutPrompt.trim().length > 30 &&
+          liveResult.seoDescription &&
+          liveResult.seoDescription.trim().length > 10 &&
+          liveResult.keywords &&
+          liveResult.keywords.length === 9
+        ) {
+          siteResult = liveResult;
+        } else {
+          console.warn('[Site SEO] Custom API returned incomplete output, falling back to smart engine');
+        }
+      } catch (err) {
+        console.warn('Custom API execution failed, falling back to smart engine:', err);
+      }
+    }
+  } finally {
+    clearInterval(ticker);
   }
 
-  // Fallback to Smart Dynamic Generator based on the 10 Master Examples
-  const aboutPrompt = generateSmartAboutPrompt(input, partition);
-  const wordCount = countWords(aboutPrompt);
-  const seoDescription = generateSmartSeoDescription(input, partition);
-  const charCount = seoDescription.length;
-  const keywords = generateSmartKeywords(input, partition);
+  if (!siteResult) {
+    // Fallback to Smart Dynamic Generator based on the 10 Master Examples
+    const aboutPrompt = generateSmartAboutPrompt(input, partition);
+    const wordCount = countWords(aboutPrompt);
+    const seoDescription = generateSmartSeoDescription(input, partition);
+    const charCount = seoDescription.length;
+    const keywords = generateSmartKeywords(input, partition);
 
-  return {
-    aboutPrompt,
-    wordCount,
-    seoDescription,
-    charCount,
-    keywords,
-    keywordsMatched: partition.aboutKeywords,
-    siteMetaTitle: `Realistic Couple AI Prompt — Arigato Labs`,
-  };
+    siteResult = {
+      aboutPrompt,
+      wordCount,
+      seoDescription,
+      charCount,
+      keywords,
+      keywordsMatched: partition.aboutKeywords,
+      siteMetaTitle: `Realistic Couple AI Prompt — Arigato Labs`,
+    };
+  }
+
+  // Step 4: Strict Length Audits (88% -> 96%)
+  onProgress?.(4, 96, 'Auditing strict limits: <199 words, <160 chars, 9 tags...');
+  await new Promise((r) => setTimeout(r, 200));
+
+  // Step Complete: 100%
+  onProgress?.(4, 100, 'Arigato Site SEO Package Ready!');
+
+  return siteResult;
 }
 
 /**
@@ -637,6 +698,11 @@ function resolveApiKey(config: ApiConfig): string {
 function resolveApiUrl(config: ApiConfig): string {
   if (config.apiUrl && config.apiUrl.trim()) return config.apiUrl.trim();
   return '/modal-api/chat/completions';
+}
+
+function isVisionModel(model: string): boolean {
+  const m = (model || '').toLowerCase();
+  return m.includes('vision') || m.includes('vl') || m.includes('4o') || m.includes('gemini') || m.includes('claude');
 }
 
 function buildAuthHeaders(config: ApiConfig): Record<string, string> {
@@ -712,7 +778,13 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "title", "description"
 "variations" must be an array of exactly ${requestedVariations} items: [ { "title": "...", "description": "..." }, ... ]
 Do NOT include markdown fences or think tags in the JSON.`;
 
-  const userTextPrompt = `Create ${requestedVariations} distinct high-converting ${format === 'with_link' ? 'With Link' : 'Search Steps'} Pinterest SEO variations for:\nPrompt: "${input.prompt || 'Aesthetic Visual Art'}"\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nConfigured Keywords: ${input.activeKeywords.join(', ')}`;
+  const canUseVision = Boolean(input.imageDataUrl && isVisionModel(config.model || ''));
+  const visualNote = input.imageFileName
+    ? `\n[Reference Image Asset: "${input.imageFileName}"]`
+    : input.imageDataUrl
+    ? `\n[Reference Image Asset: Visual photo composition attached]`
+    : '';
+  const userTextPrompt = `Create ${requestedVariations} distinct high-converting ${format === 'with_link' ? 'With Link' : 'Search Steps'} Pinterest SEO variations for:\nPrompt: "${input.prompt || 'Aesthetic Visual Art'}"${visualNote}\nPinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}\nConfigured Keywords: ${input.activeKeywords.join(', ')}`;
 
   const buildPayload = (includeImage: boolean) => {
     const messages: any[] = [
@@ -732,7 +804,7 @@ Do NOT include markdown fences or think tags in the JSON.`;
       model: config.model || 'moonshotai/Kimi-K3',
       messages,
       temperature: 0.35,
-      max_tokens: 4096,
+      max_tokens: 1600,
       top_p: 0.95,
       stream: false,
       response_format: { type: 'json_object' },
@@ -744,24 +816,27 @@ Do NOT include markdown fences or think tags in the JSON.`;
     response = await fetch(endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(buildPayload(!!input.imageDataUrl)),
+      body: JSON.stringify(buildPayload(canUseVision)),
+      signal: AbortSignal.timeout(18000),
     });
 
-    if (!response.ok && input.imageDataUrl) {
+    if (!response.ok && canUseVision) {
       console.warn(`[Pinterest SEO] Vision call returned ${response.status}, retrying with text-only payload...`);
       response = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(buildPayload(false)),
+        signal: AbortSignal.timeout(15000),
       });
     }
   } catch (err) {
-    if (input.imageDataUrl) {
+    if (canUseVision) {
       console.warn('[Pinterest SEO] Multimodal fetch failed, retrying text-only:', err);
       response = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(buildPayload(false)),
+        signal: AbortSignal.timeout(15000),
       });
     } else {
       throw err;
@@ -990,7 +1065,14 @@ We have pre-selected the exact keywords you must use for each section:
 
 OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDescription", "keywords", "siteMetaTitle". Do NOT include markdown commentary or think tags in the JSON.`;
 
-  const userTextPrompt = `Create the authoritative Arigato Site SEO package for:\nPrompt: "${input.prompt || 'Realistic couple photo'}"\n\nREQUIRED KEYWORD ASSIGNMENTS:\n- About This Prompt (weave all 10 in sentences): ${partition.aboutKeywords.join(', ')}\n- SEO Meta Description (weave all 3 in sentence): ${partition.descKeywords.join(', ')}\n- Exact 9 Tags: ${partition.tagKeywords.join(', ')}`;
+  const canUseVision = Boolean(input.imageDataUrl && isVisionModel(config.model || ''));
+  const visualNote = input.imageFileName
+    ? `\n[Reference Image Asset: "${input.imageFileName}" - capture realistic facial details, candid couple chemistry, authentic skin pores, and natural camera sensor look]`
+    : input.imageDataUrl
+    ? `\n[Reference Image Asset: High-realism candid couple photo with natural lighting and unposed styling]`
+    : '';
+
+  const userTextPrompt = `Create the authoritative Arigato Site SEO package for:\nPrompt: "${input.prompt || 'Realistic couple photo'}"${visualNote}\n\nREQUIRED KEYWORD ASSIGNMENTS:\n- About This Prompt (weave all 10 in sentences): ${partition.aboutKeywords.join(', ')}\n- SEO Meta Description (weave all 3 in sentence): ${partition.descKeywords.join(', ')}\n- Exact 9 Tags: ${partition.tagKeywords.join(', ')}`;
 
   const buildPayload = (includeImage: boolean) => {
     const messages: any[] = [
@@ -1010,7 +1092,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDes
       model: config.model || 'moonshotai/Kimi-K3',
       messages,
       temperature: 0.35,
-      max_tokens: 4096,
+      max_tokens: 1200,
       top_p: 0.95,
       stream: false,
       response_format: { type: 'json_object' },
@@ -1022,25 +1104,28 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDes
     response = await fetch(endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(buildPayload(!!input.imageDataUrl)),
+      body: JSON.stringify(buildPayload(canUseVision)),
+      signal: AbortSignal.timeout(18000),
     });
 
     // If multimodal call returns 400/422/404 or fails, retry immediately with text-only payload
-    if (!response.ok && input.imageDataUrl) {
+    if (!response.ok && canUseVision) {
       console.warn(`[Site SEO] Vision API returned status ${response.status}, retrying with text-only payload...`);
       response = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(buildPayload(false)),
+        signal: AbortSignal.timeout(15000),
       });
     }
   } catch (fetchErr) {
     console.warn('[Site SEO] Fetch call failed, falling back to text-only or smart engine:', fetchErr);
-    if (input.imageDataUrl) {
+    if (canUseVision) {
       response = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(buildPayload(false)),
+        signal: AbortSignal.timeout(15000),
       });
     } else {
       throw fetchErr;

@@ -65,6 +65,7 @@ export interface GenerationInput {
 export interface GenerationState {
   isGenerating: boolean;
   progressStep: number;
+  progressPercent?: number;
   statusMessage: string;
   error?: string;
 }

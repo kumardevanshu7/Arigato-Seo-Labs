@@ -31,7 +31,8 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
   const [imageFileName, setImageFileName] = useState<string>('');
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const [progressStep, setProgressStep] = useState(0);
+  const [progressStep, setProgressStep] = useState(1);
+  const [progressPercent, setProgressPercent] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
   const [result, setResult] = useState<ArigatoSiteSeoResult | null>(null);
 
@@ -49,6 +50,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
 
     setIsGenerating(true);
     setProgressStep(1);
+    setProgressPercent(10);
     setStatusMessage('Scanning prompt parameters and aesthetic composition...');
 
     try {
@@ -61,12 +63,15 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
           activeKeywords,
           pinnedKeywords,
         },
-        (step, msg) => {
+        (step, percent, msg) => {
           setProgressStep(step);
+          setProgressPercent(percent);
           setStatusMessage(msg);
         }
       );
 
+      // Brief pause to allow user to visually perceive the 100% completion state
+      await new Promise((r) => setTimeout(r, 220));
       setResult(output);
 
       // Trigger celebratory confetti
@@ -248,21 +253,32 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
 
           {/* Progress Scan Box */}
           {isGenerating && (
-            <div className="bg-[#fafaf9] border border-[#e6e0f5] p-3.5 sm:p-4 rounded-xl shadow-xs animate-in fade-in">
+            <div className="bg-[#fafaf9] border border-[#e6e0f5] p-3.5 sm:p-4 rounded-xl shadow-xs animate-in fade-in transition-all">
               <div className="flex items-center justify-between text-xs font-semibold text-[#5645d4] mb-2">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#5645d4] animate-ping"></span>
-                  <span>SERP Engine Phase {progressStep} of 4</span>
+                  <span className={`w-2 h-2 rounded-full ${progressPercent >= 100 ? 'bg-[#1aae39]' : 'bg-[#5645d4] animate-ping'}`}></span>
+                  <span>
+                    {progressPercent >= 100
+                      ? 'Package Ready!'
+                      : `SERP Engine Phase ${progressStep} of 4`}
+                  </span>
                 </span>
-                <span>{progressStep * 25}%</span>
+                <span className="font-mono font-bold text-xs">{progressPercent}%</span>
               </div>
               <div className="w-full h-1.5 bg-[#e5e3df] rounded-full overflow-hidden mb-2">
                 <div
-                  className="h-full bg-gradient-to-r from-[#5645d4] via-[#2a9d99] to-[#ff64c8] transition-all duration-500 rounded-full"
-                  style={{ width: `${progressStep * 25}%` }}
+                  className="h-full bg-gradient-to-r from-[#5645d4] via-[#2a9d99] to-[#ff64c8] transition-all duration-300 rounded-full"
+                  style={{ width: `${progressPercent}%` }}
                 ></div>
               </div>
-              <p className="text-xs text-[#5d5b54] font-medium">{statusMessage}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-[#5d5b54] font-medium truncate">{statusMessage}</p>
+                {progressPercent < 100 && (
+                  <span className="text-[10px] text-[#787671] shrink-0 font-mono">
+                    In Progress...
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
