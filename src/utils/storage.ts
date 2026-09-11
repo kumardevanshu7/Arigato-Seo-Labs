@@ -51,7 +51,12 @@ export const getStoredApiConfig = (): ApiConfig => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.apiConfig);
     if (!raw) return DEFAULT_API_CONFIG;
-    return { ...DEFAULT_API_CONFIG, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    // Auto-migrate legacy Kimi model to DeepSeek V4.1 Flash
+    if (!parsed.model || parsed.model.toLowerCase().includes('kimi')) {
+      parsed.model = 'deepseek-ai/DeepSeek-V4.1-Flash';
+    }
+    return { ...DEFAULT_API_CONFIG, ...parsed };
   } catch (e) {
     return DEFAULT_API_CONFIG;
   }

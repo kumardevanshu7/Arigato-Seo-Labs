@@ -983,12 +983,16 @@ Configured Keywords: ${input.activeKeywords.join(', ')}`;
       },
     ];
 
+    const activeModel = (!config.model || config.model.toLowerCase().includes('kimi'))
+      ? 'deepseek-ai/DeepSeek-V4.1-Flash'
+      : config.model;
+
     return {
-      model: config.model || 'deepseek-ai/DeepSeek-V4.1-Flash',
+      model: activeModel,
       messages,
       temperature: 0.3,
       max_tokens: 2048,
-      top_p: 0.9,
+      top_p: activeModel.toLowerCase().includes('kimi') ? 0.95 : 0.9,
       stream: false,
       response_format: { type: 'json_object' },
       reasoning_effort: 'high',
@@ -1294,12 +1298,16 @@ REQUIRED KEYWORD ASSIGNMENTS:
       },
     ];
 
+    const activeModel = (!config.model || config.model.toLowerCase().includes('kimi'))
+      ? 'deepseek-ai/DeepSeek-V4.1-Flash'
+      : config.model;
+
     return {
-      model: config.model || 'deepseek-ai/DeepSeek-V4.1-Flash',
+      model: activeModel,
       messages,
       temperature: 0.3,
       max_tokens: 2048,
-      top_p: 0.9,
+      top_p: activeModel.toLowerCase().includes('kimi') ? 0.95 : 0.9,
       stream: false,
       response_format: { type: 'json_object' },
       reasoning_effort: 'high',
@@ -1454,12 +1462,16 @@ Formatting Guidelines:
       ];
 
       const isAdaTest = !imageDataUrl && userMessage.toLowerCase().includes('ada') && userMessage.toLowerCase().includes('london');
+      const activeModel = (!config.model || config.model.toLowerCase().includes('kimi'))
+        ? 'deepseek-ai/DeepSeek-V4.1-Flash'
+        : config.model;
+
       const requestPayload: any = {
-        model: config.model || 'deepseek-ai/DeepSeek-V4.1-Flash',
+        model: activeModel,
         messages,
         temperature: 0.3,
         max_tokens: 2048,
-        top_p: 0.9,
+        top_p: activeModel.toLowerCase().includes('kimi') ? 0.95 : 0.9,
         stream: false,
         reasoning_effort: 'high',
       };
