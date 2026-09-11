@@ -866,7 +866,7 @@ export async function generateArigatoSiteSeo(
 }
 
 /**
- * Pluggable Custom API Handlers (Configured for moonshotai/Kimi-K3 on Modal)
+ * Pluggable Custom API Handlers (Configured for deepseek-ai/DeepSeek-V4.1-Flash on Modal)
  */
 function resolveApiKey(config: ApiConfig): string {
   if (config.apiKey && config.apiKey.trim()) return config.apiKey.trim();
@@ -884,7 +884,7 @@ function resolveApiUrl(config: ApiConfig): string {
 }
 
 function isVisionModel(_model: string): boolean {
-  // Enables multimodal vision payload for Kimi K3, DeepSeek V4.1 Flash, GLM 5.3 Flash, Inkling, and all vision-tagged models
+  // Enables multimodal vision payload for DeepSeek V4.1 Flash, GLM 5.3 Flash, Inkling, and all vision-tagged models
   // If an endpoint doesn't support images, our fetch try/catch automatically retries with text-only.
   return true;
 }
@@ -1029,7 +1029,7 @@ Configured Keywords: ${input.activeKeywords.join(', ')}`;
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Kimi API returned status ${response.status}: ${errText}`);
+    throw new Error(`DeepSeek API returned status ${response.status}: ${errText}`);
   }
 
   const data = await response.json();
@@ -1341,7 +1341,7 @@ REQUIRED KEYWORD ASSIGNMENTS:
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Kimi API returned status ${response.status}: ${errText}`);
+    throw new Error(`DeepSeek API returned status ${response.status}: ${errText}`);
   }
 
   const data = await response.json();
@@ -1396,11 +1396,12 @@ REQUIRED KEYWORD ASSIGNMENTS:
 }
 
 /**
- * Live Assistant Tester: lets the user test their Kimi-K3 API directly
+ * Live Assistant Tester: lets the user test their DeepSeek-V4.1-Flash API directly with text & vision
  */
 export async function sendChatAssistantMessage(
   userMessage: string,
-  history: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = []
+  history: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [],
+  imageDataUrl?: string
 ): Promise<{ reply: string; latencyMs: number; rawJson?: string; isLiveApi: boolean }> {
   const config = getStoredApiConfig();
   const apiKey = resolveApiKey(config);
@@ -1411,16 +1412,36 @@ export async function sendChatAssistantMessage(
   // If live credentials are provided, call the live Modal endpoint!
   if (apiKey) {
     try {
+      // Build user content (multimodal if image provided)
+      let userContent: any = userMessage;
+      if (imageDataUrl) {
+        userContent = [
+          {
+            type: 'text',
+            text:
+              userMessage.trim() ||
+              'Analyze this image in detail: identify subject, clothing, style, lighting, background setting, aesthetic, and generate a comprehensive reverse prompt for Gemini / Midjourney / FLUX.',
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: imageDataUrl,
+            },
+          },
+        ];
+      }
+
       const messages = [
         {
           role: 'system',
-          content: `You are "Arigato Assistant" — a super friendly, energetic, creative developer and SEO genius at Arigato Labs!
-Speak like a real, cool human friend/peer who loves prompt engineering and SEO.
+          content: `You are "DeepSeek Vision Assistant" — a super friendly, energetic, creative developer and SEO genius at Arigato Labs!
+Speak like a real, cool human friend/peer who loves prompt engineering, visual art, and SEO.
 Use natural, conversational modern Hinglish / English slangs comfortably (e.g. "Bhai", "tension mat lo", "mast prompt hai", "let's cook 🔥", "Arigato gang", "solid scene", "chill vibes", "bawaal look", etc.).
 Do NOT talk like a robotic automated customer service bot!
 
 Formatting Guidelines:
 - Format your reply with clean Markdown: use **bold text** for important highlights, clean line breaks, bullet points, and relatable emojis.
+- When an image is provided, thoroughly analyze: 1. Subject & Attire, 2. Environment & Lighting, 3. Camera/Style details, 4. Recommended Reverse Prompt.
 - Avoid messy unstructured text blocks.
 - If the user asks about latency, endpoints, or tests, give a crisp, enthusiastic status with exact numbers and a friendly takeaway.
 - Keep the energy high, friendly, and collaborative!`,
@@ -1428,18 +1449,19 @@ Formatting Guidelines:
         ...history.slice(-6),
         {
           role: 'user',
-          content: userMessage,
+          content: userContent,
         },
       ];
 
-      const isAdaTest = userMessage.toLowerCase().includes('ada') && userMessage.toLowerCase().includes('london');
+      const isAdaTest = !imageDataUrl && userMessage.toLowerCase().includes('ada') && userMessage.toLowerCase().includes('london');
       const requestPayload: any = {
         model: config.model || 'deepseek-ai/DeepSeek-V4.1-Flash',
         messages,
         temperature: 0.3,
-        max_tokens: 1024,
-        top_p: 0.95,
+        max_tokens: 2048,
+        top_p: 0.9,
         stream: false,
+        reasoning_effort: 'high',
       };
 
       if (isAdaTest) {
@@ -1462,11 +1484,32 @@ Formatting Guidelines:
         };
       }
 
-      const res = await fetch(endpoint, {
+      let res = await fetch(endpoint, {
         method: 'POST',
         headers: buildAuthHeaders(config),
         body: JSON.stringify(requestPayload),
       });
+
+      // If image payload failed, retry once with text-only
+      if (!res.ok && imageDataUrl) {
+        console.warn('[sendChatAssistantMessage] Vision request returned', res.status, '- attempting text-only retry...');
+        const fallbackMessages = [
+          messages[0],
+          ...history.slice(-6),
+          {
+            role: 'user',
+            content: userMessage.trim() || 'Analyze this image and describe creative prompt ideas.',
+          },
+        ];
+        res = await fetch(endpoint, {
+          method: 'POST',
+          headers: buildAuthHeaders(config),
+          body: JSON.stringify({
+            ...requestPayload,
+            messages: fallbackMessages,
+          }),
+        });
+      }
 
       const latencyMs = Math.round(performance.now() - startTime);
 
@@ -1480,7 +1523,13 @@ Formatting Guidelines:
       }
 
       const data = await res.json();
-      const reply = data.choices?.[0]?.message?.content || 'No response returned from model.';
+      let reply = data.choices?.[0]?.message?.content || '';
+      if (!reply.trim() && data.choices?.[0]?.message?.reasoning_content) {
+        reply = data.choices[0].message.reasoning_content;
+      }
+      if (!reply.trim()) {
+        reply = 'No response returned from model.';
+      }
 
       return {
         reply,
@@ -1502,8 +1551,10 @@ Formatting Guidelines:
   await new Promise((r) => setTimeout(r, 450));
   const latencyMs = Math.round(performance.now() - startTime);
 
-  let reply = `👋 Arre bhai, **Arigato Assistant** haazir hai! 🔥\n\nAbhi **API Connect** mein live token activate nahi hai, toh hum simulation mode mein baat kar rahe hain. Agar direct Kimi-K3 endpoint test karna hai toh top right corner mein **API Connect** se token save kar lo.\n\nBaki koi bhi prompt discuss karna ho ya visual idea brainstorm karna ho, batao — *let's cook something fire!* 🎨`;
-  if (userMessage.toLowerCase().includes('ada') || userMessage.toLowerCase().includes('extract')) {
+  let reply = `👋 Arre bhai, **DeepSeek Vision Assistant** haazir hai! 🔥\n\nAbhi **API Connect** mein live token activate nahi hai, toh hum simulation mode mein baat kar rahe hain. Agar direct **DeepSeek V4.1 Flash (Vision)** endpoint test karna hai toh top right corner mein **API Connect** se token save kar lo.\n\nBaki koi bhi prompt discuss karna ho, image analyze karwana ho, ya visual idea brainstorm karna ho, batao — *let's cook something fire!* 🎨`;
+  if (imageDataUrl) {
+    reply = `🖼️ **Visual Analysis Preview (DeepSeek V4.1 Flash Vision)**\n\nImage receive ho gayi hai bhai! Live inference ke liye top right corner mein **API Connect** pe click karke apna Modal Token ID aur Secret save kar lo.\n\nOnce connected, DeepSeek V4.1 Flash will scan this exact image for:\n- **Subject & Pose**: Detailed human anatomy & stance\n- **Styling & Fashion**: Fabric textures, palette, and wardrobe\n- **Lighting & Atmosphere**: Volumetric lighting, studio rim light, color temperature\n- **Reverse Prompt Generator**: Full Midjourney / Gemini / FLUX copy-paste prompt!`;
+  } else if (userMessage.toLowerCase().includes('ada') || userMessage.toLowerCase().includes('extract')) {
     reply = JSON.stringify({ name: 'Ada', age: 36, city: 'London' }, null, 2);
   }
 

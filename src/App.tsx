@@ -443,7 +443,7 @@ export const App: React.FC = () => {
         initialTab={brandModalTab}
       />
 
-      {/* Floating Kimi-K3 Live Test Assistant */}
+      {/* Floating DeepSeek V4.1 Flash Vision Live Test Assistant */}
       <ChatAssistant />
     </div>
   );

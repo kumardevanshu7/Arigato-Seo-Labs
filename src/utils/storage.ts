@@ -3,7 +3,7 @@ import type { KeywordItem, SeoCategory, ApiConfig } from '../types/seo';
 const DEFAULT_API_CONFIG: ApiConfig = {
   apiUrl: '/modal-api/chat/completions',
   apiKey: '',
-  model: 'moonshotai/Kimi-K3',
+  model: 'deepseek-ai/DeepSeek-V4.1-Flash',
   mode: 'simulated',
   tokenId: '',
   tokenSecret: '',

@@ -89,7 +89,7 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
               </div>
               <div className="flex items-center gap-2 text-[#5d5b54] p-1">
                 <span className="w-3.5 h-3.5 rounded-full border border-[#a4a097] flex items-center justify-center text-[9px]">ℹ</span>
-                <span><strong>Thinking / Reasoning:</strong> Kimi K3 by default reasons karta hai (controls humari app automatically manage kar leti hai).</span>
+                <span><strong>Thinking / Reasoning:</strong> DeepSeek V4.1 Flash reasoning support karta hai (controls humari app automatically manage kar leti hai).</span>
               </div>
               <div className="flex items-center gap-2 text-[#5d5b54] p-1">
                 <span className="w-3.5 h-3.5 rounded-full border border-[#a4a097] flex items-center justify-center text-[9px]">✕</span>
@@ -120,14 +120,14 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-semibold text-[#1a1a1a] flex items-center gap-1.5">
                       <Code className="w-3.5 h-3.5 text-[#ff64c8]" />
-                      Modal Kimi-K3 Endpoint
+                      Modal DeepSeek V4.1 Endpoint
                     </span>
                     {formData.mode === 'custom_api' && (
                       <span className="w-2 h-2 rounded-full bg-[#ff64c8]"></span>
                     )}
                   </div>
                   <p className="text-[11px] text-[#787671]">
-                    Calls your live <code>moonshotai/Kimi-K3</code> model on Modal proxy.
+                    Calls your live <code>deepseek-ai/DeepSeek-V4.1-Flash</code> model on Modal proxy.
                   </p>
                 </div>
 
@@ -163,17 +163,6 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[10px] text-[#787671]">Presets:</span>
-                  <button
-                    type="button"
-                    onClick={() => applyModelPreset('moonshotai/Kimi-K3')}
-                    className={`text-[10px] px-2 py-0.5 rounded border font-medium transition-all cursor-pointer ${
-                      formData.model === 'moonshotai/Kimi-K3'
-                        ? 'bg-[#5645d4] text-white border-[#5645d4] shadow-xs'
-                        : 'bg-white text-[#5645d4] border-[#dcd8f6] hover:bg-[#f0effb]'
-                    }`}
-                  >
-                    Kimi K3 (Vision)
-                  </button>
                   <button
                     type="button"
                     onClick={() => applyModelPreset('deepseek-ai/DeepSeek-V4.1-Flash')}

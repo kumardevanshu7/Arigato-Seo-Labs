@@ -308,7 +308,7 @@ export const ArigatoBrandModal: React.FC<ArigatoBrandModalProps> = ({
                   <ul className="list-disc pl-5 space-y-1">
                     <li><strong>Google Firebase (Cloud Firestore):</strong> Synchronizes and persists your keyword repository.</li>
                     <li><strong>Vercel:</strong> Global edge hosting and delivery for our web application.</li>
-                    <li><strong>Modal Labs (Moonshot AI Kimi-K3):</strong> Used for optional advanced neural text generation and structured outputs when enabled.</li>
+                    <li><strong>Modal Labs (DeepSeek AI):</strong> Used for optional advanced neural text generation and structured outputs (DeepSeek V4.1 Flash).</li>
                   </ul>
                 </div>
 
