@@ -9,11 +9,78 @@ export const countWords = (text: string): number => {
   return text.trim().split(/\s+/).filter(Boolean).length;
 };
 
-// Helper to trim text to strictly fit maximum word count
-export const enforceWordLimit = (text: string, maxWords: number): string => {
+// Helper to trim text strictly to word count range while cleanly preserving full sentence boundaries
+export const enforceWordLimit = (text: string, maxWords: number = 199, minWords: number = 151): string => {
+  if (!text) return '';
   const words = text.trim().split(/\s+/).filter(Boolean);
-  if (words.length <= maxWords) return text;
-  return words.slice(0, maxWords).join(' ') + '.';
+
+  if (words.length <= maxWords && words.length >= minWords) {
+    let t = text.trim();
+    if (!/[.!?]$/.test(t)) t += '.';
+    return t;
+  }
+
+  // Case 1: Exceeds maxWords (> 199)
+  if (words.length > maxWords) {
+    const candidateSlice = words.slice(0, maxWords).join(' ');
+    const matches = [...candidateSlice.matchAll(/[.!?](?:\s+|$)/g)];
+    if (matches.length > 0) {
+      // Find the last complete sentence that satisfies minWords <= count <= maxWords
+      for (let i = matches.length - 1; i >= 0; i--) {
+        const cutIndex = matches[i].index! + 1;
+        const sentenceClean = candidateSlice.slice(0, cutIndex).trim();
+        const sentenceWords = countWords(sentenceClean);
+        if (sentenceWords >= minWords && sentenceWords <= maxWords) {
+          return sentenceClean;
+        }
+      }
+      // If stopping at the last sentence would drop below minWords, try appending a clean CTA
+      for (let i = matches.length - 1; i >= 0; i--) {
+        const cutIdx = matches[i].index! + 1;
+        const sub = candidateSlice.slice(0, cutIdx).trim();
+        const cWords = countWords(sub);
+        if (cWords >= 135 && cWords <= 180) {
+          const cta = 'Just copy the prompt above, paste it into your generator, and have fun creating!';
+          const combined = `${sub} ${cta}`;
+          if (countWords(combined) <= maxWords && countWords(combined) >= minWords) {
+            return combined;
+          }
+        }
+      }
+    }
+    // Fallback if no sentence boundary fits: remove trailing dangling words
+    const slicedWords = words.slice(0, maxWords);
+    const dangling = new Set([
+      'a', 'an', 'the', 'and', 'or', 'with', 'for', 'to', 'of', 'in', 'on', 'at', 'by',
+      'it', 'its', 'is', 'making', 'that', 'this', 'their', 'which', 'as'
+    ]);
+    while (slicedWords.length > minWords && dangling.has(slicedWords[slicedWords.length - 1].toLowerCase().replace(/[^a-z]/g, ''))) {
+      slicedWords.pop();
+    }
+    let res = slicedWords.join(' ').trim();
+    if (!/[.!?]$/.test(res)) res += '.';
+    return res;
+  }
+
+  // Case 2: Below minWords (< 151)
+  if (words.length < minWords) {
+    let padded = text.trim();
+    if (!/[.!?]$/.test(padded)) padded += '.';
+    const padSentences = [
+      'Authentic skin textures, natural smile lines, subtle lighting variations, and handheld mobile camera realism preserve genuine authenticity with strictly zero artificial AI plastic smoothing.',
+      'Just copy the prompt above, paste it into your favorite AI generator, and have fun creating viral photos!'
+    ];
+    for (const s of padSentences) {
+      if (countWords(padded) >= minWords) break;
+      padded += ` ${s}`;
+    }
+    if (countWords(padded) > maxWords) {
+      return enforceWordLimit(padded, maxWords, minWords);
+    }
+    return padded;
+  }
+
+  return text.trim();
 };
 
 // Helper to trim text to strictly fit maximum character count
@@ -372,6 +439,11 @@ ${subjectType === 'solo_female'
 /**
  * Smart Synthesis for "About this prompt" following the official Arigato Framework
  * Strictly 151 to 199 words, covering the 8 visual dimensions with all 10 keywords woven naturally.
+ * Formatted into 4 humanized, creator-friendly segments:
+ * 1. Exciting Hook Opening ("If you generate this prompt, you're going to love the results...")
+ * 2. Visual Styling & Luxury Environment Breakdown
+ * 3. Camera Realism & Smartphone Imperfections (Zero AI Smoothing)
+ * 4. Friendly Concluding Call-to-Action (CTA)
  */
 export function generateSmartAboutPrompt(
   input: GenerationInput,
@@ -384,23 +456,23 @@ export function generateSmartAboutPrompt(
 
   const cleanSceneTitle = v.sceneTitle.replace(/^(?:a|an)\s+/i, '');
   const subjectIntro = v.subjectType === 'couple'
-    ? `This prompt creates an ultra-realistic ${cleanSceneTitle} featuring the same couple with strict facial identity preservation.`
+    ? `This prompt brings an ultra-stylish, authentic ${cleanSceneTitle} to life, capturing candid closeness and genuine chemistry for ${kws[0] || 'gemini couple prompt'} and ${kws[1] || 'trending prompt girls'}.`
     : v.subjectType === 'solo_female'
-    ? `This prompt captures an authentic, spontaneous portrait of a stylish young woman with strict facial identity preservation.`
-    : `This prompt creates a compelling, authentic portrait of a stylish young man with strict facial identity preservation.`;
+    ? `This prompt brings an authentic, spontaneous portrait of a stylish young woman to life, capturing natural charm and unposed confidence for ${kws[0] || 'gemini girl prompt'} and ${kws[1] || 'trending prompt girls'}.`
+    : `This prompt brings a compelling, authentic portrait of a stylish young man to life, capturing natural presence and charisma for ${kws[0] || 'portrait prompt'} and ${kws[1] || 'trending prompt boys'}.`;
 
-  const s1 = `${subjectIntro} The composition emphasizes ${v.subjectActionDesc}, highlighting natural body language, authentic eye contact, and playful interaction for ${kws[0] || 'realistic photo prompt'} and ${kws[1] || 'trending ai prompt'}.`;
+  const s1 = `If you generate this prompt, you are going to have an absolute blast with the results! ${subjectIntro}`;
 
-  const s2 = `Their styling remains distinctive and sophisticated, featuring ${v.outfitDesc}, tailored seamlessly for ${kws[2] || 'aesthetic couple portrait'}, ${kws[3] || 'viral couple prompt'}, and ${kws[4] || 'couple photo ideas'}.`;
+  const s2 = `${v.subjectType === 'solo_female' ? 'Her' : v.subjectType === 'solo_male' ? 'His' : 'Their'} styling stays effortlessly chic and distinctive, featuring ${v.outfitDesc}, tailored seamlessly for ${kws[2] || 'aesthetic couple portrait'}, ${kws[3] || 'couple aesthetic'}, and ${kws[4] || 'couple photography ideas'}.`;
 
-  const s3 = `The environment features ${v.aestheticDesc}, producing soft directional illumination, subtle shadows, and realistic light reflections that enhance ${kws[5] || 'candid photography'} and ${kws[6] || 'aesthetic look'}.`;
+  const s3 = `The surrounding space showcases ${v.aestheticDesc}, adding rich ambient atmosphere, balanced highlights, and gentle shadows that elevate ${kws[5] || 'trending prompt boys'} and ${kws[6] || 'viral couple prompt'}.`;
 
-  const s4 = `Authentic smartphone imperfections—including visible skin pores, natural facial smile lines, delicate hair flyaways, fabric creases, and subtle sensor grain—preserve complete photographic realism without artificial AI smoothing or plastic beauty filters.`;
+  const s4 = `Authentic handheld smartphone details—including real skin texture, visible pores, natural smile lines, hair flyaways, and fabric creases—preserve complete camera realism with strictly zero artificial AI smoothing or plastic beauty filters, ideal for ${kws[7] || 'romantic couple prompt'} and ${kws[8] || 'candid photo poses'}.`;
 
-  const s5 = `Captured in vertical 9:16 framing with a handheld smartphone perspective, this prompt delivers an effortless snapshot tailored for ${kws[7] || 'candid photo poses'}, ${kws[8] || 'couple aesthetic'}, and ${kws[9] || 'smartphone photo'}, ready to generate captivating, viral imagery.`;
+  const s5 = `Ready to create your own? Just copy the prompt above, paste it into your favorite AI image generator, and have fun creating viral photos for ${kws[9] || 'smartphone couple photo'}!`;
 
   const fullPrompt = `${s1} ${s2} ${s3} ${s4} ${s5}`;
-  return enforceWordLimit(fullPrompt, 195);
+  return enforceWordLimit(fullPrompt, 199, 151);
 }
 
 /**
@@ -1254,7 +1326,7 @@ Apply these directives strictly to guide your tone, visual focus, and descriptio
 CRITICAL: DO NOT literally quote or print the user's raw directives in the copy. Instead, execute them as writing instructions!
 ` : ''}
 TONE & WRITING STYLE:
-- Write in authoritative, evocative, natural English with vivid observational depth.
+- Write in an engaging, humanized creator tone with high visual fidelity and SEO keyword integration.
 - Follow the 8-dimension content blueprint and reference examples above.
 - STRICT NO-AI-SMOOTHING RULE: Emphasize genuine skin pores, authentic skin texture, realistic shadows, hair flyaways, and natural fabric creases. Zero plastic skin or CGI smoothing!
 - No plagiarism: Write with 100% original, fresh observational energy.
@@ -1269,18 +1341,33 @@ ${v.subjectType === 'solo_female'
 ENVIRONMENT NOTICE:
 This is for "Arigato Site SEO" (NOT Pinterest). Do NOT generate Pinterest board recommendations, Pinterest pin titles, or Pinterest hashtags.
 
-CRITICAL KEYWORD & COUNTING RULES (STRICT COMPLIANCE REQUIRED):
-We have pre-selected the exact keywords you must use for each section:
+CRITICAL 4-PART HUMANIZED STRUCTURE FOR "aboutPrompt":
+Write in an engaging, humanized creator tone with high visual fidelity and SEO keyword integration across 4 cohesive parts:
 
-1. "aboutPrompt" (10 MANDATORY KEYWORDS, STRICTLY 151 TO 199 WORDS):
-   - STRICT LENGTH CONSTRAINT: Exactly 151 to 199 words (Preferred target: 175 to 195 words).
+1. OPENING HOOK (Creator Excitement + First Keywords):
+   - Start enthusiastically in natural English: "If you generate this prompt, you're going to love the results! In this prompt, you get [describe scene/concept/energy]..."
+   - Naturally weave the first 2 target keywords into this opening.
+
+2. VISUAL STYLING, OUTFITS & ENVIRONMENT (Exact Details + Middle Keywords):
+   - Carefully inspect the image pixels and describe exact clothing cuts, fabrics, colors, posture, and setting:
+     * Detail the garments, colors, specific fabrics (e.g. satin sheen, glittering sequins, sheer mesh corset panels, tailored cloth), necklines (plunging V-neck, halter), and accessories (black sunglasses, jewelry).
+     * Detail the environment (e.g. interior architecture, marble walls with vertical gold/brass trim lines, ambient lighting).
+   - Naturally weave the next 4-5 target keywords into fluent, complete sentences (NO comma lists).
+
+3. CAMERA & REALISM (Smartphone Imperfections + Zero AI Smoothing):
+   - Describe handheld smartphone 9:16 vertical framing, genuine skin pores, subtle facial lines, realistic shadows, natural hair flyaways, and fabric creases.
+   - STRICT ZERO AI PLASTIC SMOOTHING RULE: Strictly zero artificial CGI smoothing or plastic beauty filters!
+   - Naturally weave 2 target keywords here.
+
+4. MANDATORY CLOSING CALL-TO-ACTION (CTA + Final Keyword):
+   - End with an inviting, enthusiastic call to action: "Ready to create your own? Just copy the prompt above, paste it into your favorite AI image generator, and have fun creating viral photos!"
+   - Naturally weave the 10th target keyword into this closing CTA.
+
+CRITICAL LENGTH & COUNTING RULES (STRICT COMPLIANCE REQUIRED):
+1. "aboutPrompt":
+   - STRICT LENGTH CONSTRAINT: Exactly 151 to 199 words (Target: 165 to 185 words).
    - NEVER write fewer than 151 words. NEVER exceed 199 words.
-   - Master 8-Dimension Reverse-Prompting:
-     * Describe the exact visual scene, framing (vertical 9:16 smartphone perspective), and subjects.
-     * Describe exact outfits, garment cuts, specific fabrics (e.g. satin sheen, sparkling sequins, sheer mesh panels, tailored cloth), necklines (plunging V-neck, halter), and accessories (black sunglasses, jewelry).
-     * Detail the physical pose, body language, facial expression, and eye contact.
-     * Describe the environment (e.g. interior architecture, wall textures, decor, floor, ambient lighting).
-     * Emphasize authentic smartphone realism: genuine skin pores, subtle facial lines, realistic shadows, natural hair flyaways, and fabric creases — STRICTLY ZERO AI PLASTIC BEAUTY SMOOTHING.
+   - CRITICAL SENTENCE COMPLETION: Every sentence MUST be fully completed before reaching 195 words. NEVER stop mid-sentence or leave hanging words!
    - You MUST naturally weave ALL 10 of these target keywords into fluent, human, grammatically complete sentences:
      * 5 Pinned Keywords: ${partition.aboutPinned.join(', ')}
      * 5 Contextual Keywords: ${partition.aboutUnpinned.join(', ')}
@@ -1320,7 +1407,13 @@ Visual Artwork Asset: "${input.imageFileName || 'Uploaded visual'}"
 ${input.extraGuidance?.trim() ? `User's Extra Guidance Directives: "${input.extraGuidance.trim()}"\n` : ''}
 ${visualInspectionPrompt}
 
-REQUIRED KEYWORD ASSIGNMENTS:
+REQUIRED 4-PART "aboutPrompt" FLOW (weave all 10 keywords in fluent sentences, 151-199 words):
+1. Exciting Hook: "If you generate this prompt, you're going to love the results! In this prompt, you get..." + keywords 1-2.
+2. Visual Styling & Environment: exact garments, fabrics, colors, sunglasses, luxury marble interior + keywords 3-6.
+3. Realistic Photography: smartphone 9:16 framing, authentic skin pores, smile lines, zero AI smoothing + keywords 7-9.
+4. Concluding CTA: "Ready to create your own? Just copy the prompt above, paste it into your favorite AI image generator, and have fun creating viral photos!" + keyword 10.
+
+MANDATORY KEYWORD ASSIGNMENTS:
 - About This Prompt (weave all 10 in fluent sentences, 151-199 words): ${partition.aboutKeywords.join(', ')}
 - SEO Meta Description (weave all 3 in sentence, max 160 chars): ${partition.descKeywords.join(', ')}
 - Exact 10 Tags: ${partition.tagKeywords.slice(0, 10).join(', ')}`;
@@ -1416,14 +1509,19 @@ REQUIRED KEYWORD ASSIGNMENTS:
     ? rawAbout.trim()
     : smartBackup.aboutPrompt;
 
-  // Enforce the 151-199 word limit strictly
-  if (countWords(aboutPrompt) > 199) {
-    aboutPrompt = enforceWordLimit(aboutPrompt, 199);
+  // If the model response doesn't end with a creator CTA and has room, append one warmly
+  const hasCta = /\b(copy|try\s+it|have\s+fun|generator|create\s+your\s+own)\b/i.test(aboutPrompt.slice(-150));
+  if (!hasCta && countWords(aboutPrompt) <= 175) {
+    const cleanPrompt = aboutPrompt.endsWith('.') ? aboutPrompt : `${aboutPrompt}.`;
+    aboutPrompt = `${cleanPrompt} Ready to create your own? Just copy the prompt above, paste it into your favorite AI image generator, and have fun creating viral photos!`;
   }
 
-  // Fail-safe check for seoDescription:
+  // Strictly enforce 151 to 199 words without cutting mid-sentence
+  aboutPrompt = enforceWordLimit(aboutPrompt, 199, 151);
+
+  // Fail-safe check for seoDescription: strictly <= 160 chars
   let seoDescription = rawSeoDesc && typeof rawSeoDesc === 'string' && rawSeoDesc.trim().length >= 20
-    ? enforceCharLimit(rawSeoDesc.trim(), 160)
+    ? enforceSentenceCharLimit(rawSeoDesc.trim(), 160)
     : smartBackup.seoDescription;
 
   // Fail-safe check for keywords: exactly 10 tags
