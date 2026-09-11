@@ -18,7 +18,7 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
   const [formData, setFormData] = useState<ApiConfig>({
     ...config,
     apiUrl: config.apiUrl || '/modal-api/chat/completions',
-    model: config.model || 'moonshotai/Kimi-K3',
+    model: config.model || 'deepseek-ai/DeepSeek-V4.1-Flash',
   });
 
   if (!isOpen) return null;
@@ -37,12 +37,12 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
     onClose();
   };
 
-  const applyKimiPreset = () => {
+  const applyModelPreset = (modelId: string) => {
     setFormData({
       ...formData,
       mode: 'custom_api',
-      apiUrl: '/modal-api/chat/completions',
-      model: 'moonshotai/Kimi-K3',
+      apiUrl: formData.apiUrl || '/modal-api/chat/completions',
+      model: modelId,
     });
   };
 
@@ -57,13 +57,13 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-semibold tracking-tight text-white flex items-center gap-2">
-                <span>Modal Kimi-K3 API Connection</span>
-                <span className="text-[9px] sm:text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-[#5645d4] text-white">
-                  Moonshot Kimi
+                <span>Modal AI Vision Endpoint</span>
+                <span className="text-[9px] sm:text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-[#1a73e8] text-white">
+                  {formData.model.includes('deepseek') ? 'DeepSeek V4.1' : 'Modal Vision'}
                 </span>
               </h3>
               <p className="text-[11px] sm:text-xs text-[#a4a097]">
-                Connect your live Modal endpoint with Structured Outputs
+                Connect your live Modal endpoint with Vision & Structured Outputs
               </p>
             </div>
           </div>
@@ -157,17 +157,35 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
 
             {/* Custom API Credentials */}
             <div className="p-3.5 sm:p-4 bg-[#fafaf9] rounded-lg border border-[#e5e3df] space-y-3 animate-in fade-in">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-1.5">
                 <span className="text-xs font-bold text-[#1a1a1a]">
                   Modal Proxy Credentials
                 </span>
-                <button
-                  type="button"
-                  onClick={applyKimiPreset}
-                  className="text-[11px] text-[#5645d4] hover:underline font-semibold cursor-pointer"
-                >
-                  Reset to Kimi-K3 URL
-                </button>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-[#787671]">Presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => applyModelPreset('moonshotai/Kimi-K3')}
+                    className={`text-[10px] px-2 py-0.5 rounded border font-medium transition-all cursor-pointer ${
+                      formData.model === 'moonshotai/Kimi-K3'
+                        ? 'bg-[#5645d4] text-white border-[#5645d4] shadow-xs'
+                        : 'bg-white text-[#5645d4] border-[#dcd8f6] hover:bg-[#f0effb]'
+                    }`}
+                  >
+                    Kimi K3 (Vision)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyModelPreset('deepseek-ai/DeepSeek-V4.1-Flash')}
+                    className={`text-[10px] px-2 py-0.5 rounded border font-medium transition-all cursor-pointer ${
+                      formData.model === 'deepseek-ai/DeepSeek-V4.1-Flash'
+                        ? 'bg-[#1a73e8] text-white border-[#1a73e8] shadow-xs'
+                        : 'bg-white text-[#1a73e8] border-[#c2e7ff] hover:bg-[#e8f0fe]'
+                    }`}
+                  >
+                    DeepSeek V4.1 Flash (Vision)
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -179,7 +197,7 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
                     type="text"
                     value={formData.tokenId || ''}
                     onChange={(e) => setFormData({ ...formData, tokenId: e.target.value })}
-                    placeholder="e.g. t-id-..."
+                    placeholder="e.g. wk-xw9NlZ3ttsYkSRxvWsmhVp"
                     className="w-full px-3 py-2 text-sm sm:text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4]"
                   />
                 </div>
@@ -223,7 +241,7 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
                   className="w-full px-3 py-2 text-sm sm:text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] font-mono"
                 />
                 <span className="text-[10px] text-[#787671] mt-1 block">
-                  Proxy endpoint routes securely to: <code className="text-[#5645d4]">https://devansh-grow--ep-kimi-k3-server.us-west.modal.direct/v1</code>
+                  Proxy endpoint routes securely to: <code className="text-[#5645d4]">https://devansh-grow--ep-deepseek-v4-1-flash-1-server.us-west.modal.direct/v1</code>
                 </span>
               </div>
 
@@ -235,7 +253,7 @@ export const ApiIntegrationModal: React.FC<ApiIntegrationModalProps> = ({
                   type="text"
                   value={formData.model}
                   onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                  placeholder="moonshotai/Kimi-K3"
+                  placeholder="deepseek-ai/DeepSeek-V4.1-Flash"
                   className="w-full px-3 py-2 text-sm sm:text-xs bg-white border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] font-mono"
                 />
               </div>

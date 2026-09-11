@@ -11,7 +11,7 @@ export default defineConfig({
     },
     proxy: {
       '/modal-api': {
-        target: 'https://devansh-grow--ep-kimi-k3-server.us-west.modal.direct/v1',
+        target: 'https://devansh-grow--ep-deepseek-v4-1-flash-1-server.us-west.modal.direct/v1',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/modal-api/, ''),
         secure: true,

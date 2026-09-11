@@ -883,9 +883,10 @@ function resolveApiUrl(config: ApiConfig): string {
   return '/modal-api/chat/completions';
 }
 
-function isVisionModel(model: string): boolean {
-  const m = (model || '').toLowerCase();
-  return m.includes('vision') || m.includes('vl') || m.includes('4o') || m.includes('gemini') || m.includes('claude');
+function isVisionModel(_model: string): boolean {
+  // Enables multimodal vision payload for Kimi K3, DeepSeek V4.1 Flash, GLM 5.3 Flash, Inkling, and all vision-tagged models
+  // If an endpoint doesn't support images, our fetch try/catch automatically retries with text-only.
+  return true;
 }
 
 function buildAuthHeaders(config: ApiConfig): Record<string, string> {
@@ -983,13 +984,14 @@ Configured Keywords: ${input.activeKeywords.join(', ')}`;
     ];
 
     return {
-      model: config.model || 'moonshotai/Kimi-K3',
+      model: config.model || 'deepseek-ai/DeepSeek-V4.1-Flash',
       messages,
-      temperature: 0.35,
-      max_tokens: 1600,
-      top_p: 0.95,
+      temperature: 0.3,
+      max_tokens: 2048,
+      top_p: 0.9,
       stream: false,
       response_format: { type: 'json_object' },
+      reasoning_effort: 'high',
     };
   };
 
@@ -1293,13 +1295,14 @@ REQUIRED KEYWORD ASSIGNMENTS:
     ];
 
     return {
-      model: config.model || 'moonshotai/Kimi-K3',
+      model: config.model || 'deepseek-ai/DeepSeek-V4.1-Flash',
       messages,
-      temperature: 0.35,
-      max_tokens: 1200,
-      top_p: 0.95,
+      temperature: 0.3,
+      max_tokens: 2048,
+      top_p: 0.9,
       stream: false,
       response_format: { type: 'json_object' },
+      reasoning_effort: 'high',
     };
   };
 
@@ -1431,7 +1434,7 @@ Formatting Guidelines:
 
       const isAdaTest = userMessage.toLowerCase().includes('ada') && userMessage.toLowerCase().includes('london');
       const requestPayload: any = {
-        model: config.model || 'moonshotai/Kimi-K3',
+        model: config.model || 'deepseek-ai/DeepSeek-V4.1-Flash',
         messages,
         temperature: 0.3,
         max_tokens: 1024,
