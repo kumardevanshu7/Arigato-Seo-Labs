@@ -240,28 +240,44 @@ export function partitionArigatoSiteKeywords(input: GenerationInput): ArigatoSit
   // Shuffle unpinned pool randomly for every generation
   const shuffledUnpinned = [...enrichedUnpinned].sort(() => 0.5 - Math.random());
 
-  // A. ABOUT THIS PROMPT (10 keywords: 5 pinned + 5 random unpinned)
-  const aboutPinned = [...pinnedList];
-  const neededUnpinnedForAbout = Math.max(0, 10 - aboutPinned.length);
-  const aboutUnpinned = shuffledUnpinned.slice(0, neededUnpinnedForAbout);
-  const aboutKeywords = [...aboutPinned, ...aboutUnpinned].slice(0, 10);
+  // A. ABOUT THIS PROMPT:
+  // User Rule: 9 keywords total if pinned exist (up to 5 pinned + remaining unpinned to reach 9)
+  // If NO pinned exist: only 4 unpinned keywords (unless active keywords is 6 or 7, then use those 6 or 7)
+  let aboutPinned: string[] = [];
+  let aboutUnpinned: string[] = [];
+  let aboutKeywords: string[] = [];
 
-  // B. SEO META DESCRIPTION (3 keywords: 2 random pinned + 1 random unpinned)
+  if (pinnedList.length > 0) {
+    aboutPinned = [...pinnedList].slice(0, 5);
+    const neededUnpinnedForAbout = Math.max(0, 9 - aboutPinned.length);
+    aboutUnpinned = shuffledUnpinned.slice(0, neededUnpinnedForAbout);
+    aboutKeywords = [...aboutPinned, ...aboutUnpinned].slice(0, 9);
+  } else {
+    // If no pinned keywords:
+    const count = (unpinnedList.length >= 6 && unpinnedList.length <= 7) ? unpinnedList.length : 4;
+    aboutUnpinned = shuffledUnpinned.slice(0, count);
+    aboutKeywords = [...aboutUnpinned];
+  }
+
+  // B. SEO META DESCRIPTION:
+  // User Rule: Exactly 4 keywords (up to 2 pinned + remaining unpinned to reach 4)
   const shuffledPinned = [...pinnedList].sort(() => 0.5 - Math.random());
   const descPinned = shuffledPinned.slice(0, Math.min(2, shuffledPinned.length));
   const remainingForDesc = shuffledUnpinned.filter(
     (k) => !descPinned.some((dp) => dp.toLowerCase() === k.toLowerCase())
   );
-  const descUnpinned = remainingForDesc.slice(0, Math.max(0, 3 - descPinned.length));
-  const descKeywords = [...descPinned, ...descUnpinned].slice(0, 3);
+  const neededForDesc = Math.max(0, 4 - descPinned.length);
+  const descUnpinned = remainingForDesc.slice(0, neededForDesc);
+  const descKeywords = [...descPinned, ...descUnpinned].slice(0, 4);
 
-  // C. SEO KEYWORDS TAGS (9 tags: 4 random pinned + 5 random unpinned)
+  // C. SEO KEYWORDS TAGS:
+  // User Rule: 10 tags (up to 4 pinned + remaining unpinned to reach 10)
   const tagPinned = shuffledPinned.slice(0, Math.min(4, shuffledPinned.length));
   const remainingForTags = shuffledUnpinned.filter(
     (k) => !tagPinned.some((tp) => tp.toLowerCase() === k.toLowerCase())
   );
-  const tagUnpinned = remainingForTags.slice(0, Math.max(0, 9 - tagPinned.length));
-  const tagKeywords = [...tagPinned, ...tagUnpinned].slice(0, 9);
+  const tagUnpinned = remainingForTags.slice(0, Math.max(0, 10 - tagPinned.length));
+  const tagKeywords = [...tagPinned, ...tagUnpinned].slice(0, 10);
 
   return {
     aboutKeywords,
@@ -476,8 +492,8 @@ export function generateSmartAboutPrompt(
 }
 
 /**
- * Smart synthesis generator for "SEO Meta Description" (Strictly < 160 chars)
- * Weaves 3 keywords: 2 random pinned + 1 random unpinned into a natural SERP sentence.
+ * Smart synthesis generator for "SEO Meta Description" (Strictly <= 160 chars)
+ * Weaves 4 keywords into a natural SERP sentence.
  */
 export function generateSmartSeoDescription(
   input: GenerationInput,
@@ -485,27 +501,31 @@ export function generateSmartSeoDescription(
   visual?: VisualAnalysis
 ): string {
   const parts = partition || partitionArigatoSiteKeywords(input);
-  const [k1, k2, k3] = parts.descKeywords;
+  const [k1, k2, k3, k4] = parts.descKeywords;
   const v = visual || analyzeVisualAndPrompt(input);
 
+  const extraPart = k4 ? ` and ${k4}` : '';
   let desc = '';
   if (v.subjectType === 'solo_female') {
     desc = v.is1980s
-      ? `1980s retro prompt for ${k1} and ${k2}, with ${k3}, authentic styling, natural lighting, and smartphone realism.`
-      : `Girl AI prompt for ${k1} and ${k2}, with ${k3}, authentic styling, natural lighting, and candid smartphone realism.`;
+      ? `1980s retro prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with authentic styling and smartphone realism.`
+      : `Girl AI prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with candid smartphone realism.`;
   } else if (v.subjectType === 'solo_male') {
-    desc = `Portrait AI prompt for ${k1} and ${k2}, featuring ${k3}, authentic styling, natural lighting, and smartphone realism.`;
+    desc = `Portrait AI prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with authentic styling and smartphone realism.`;
   } else {
-    desc = `Realistic couple AI prompt for ${k1} and ${k2}, featuring ${k3}, strict face identity, and candid smartphone realism.`;
+    desc = `Realistic couple AI prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with candid smartphone realism.`;
   }
 
   if (desc.length > 160) {
-    desc = `AI prompt for ${k1} and ${k2}, featuring ${k3}, strict face identity, and smartphone realism.`;
+    desc = `AI prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with smartphone realism.`;
   }
   if (desc.length > 160) {
-    desc = `AI prompt for ${k1} & ${k2} with ${k3} and authentic smartphone realism.`;
+    desc = `AI prompt for ${k1}, ${k2}, and ${k3} with authentic smartphone realism.`;
   }
-  return enforceCharLimit(desc, 160);
+  if (desc.length > 160) {
+    desc = `AI prompt for ${k1} & ${k2} with ${k3}${extraPart}.`;
+  }
+  return enforceSentenceCharLimit(desc, 160);
 }
 
 export function getSiteMetaTitle(v: VisualAnalysis): string {
@@ -947,6 +967,8 @@ export async function generateArigatoSiteSeo(
       keywords,
       keywordsMatched: partition.aboutKeywords,
       siteMetaTitle: getSiteMetaTitle(visual),
+      aboutKeywords: partition.aboutKeywords,
+      descKeywords: partition.descKeywords,
     };
   }
 
@@ -1368,18 +1390,18 @@ CRITICAL LENGTH & COUNTING RULES (STRICT COMPLIANCE REQUIRED):
    - STRICT LENGTH CONSTRAINT: Exactly 151 to 199 words (Target: 165 to 185 words).
    - NEVER write fewer than 151 words. NEVER exceed 199 words.
    - CRITICAL SENTENCE COMPLETION: Every sentence MUST be fully completed before reaching 195 words. NEVER stop mid-sentence or leave hanging words!
-   - You MUST naturally weave ALL 10 of these target keywords into fluent, human, grammatically complete sentences:
-     * 5 Pinned Keywords: ${partition.aboutPinned.join(', ')}
-     * 5 Contextual Keywords: ${partition.aboutUnpinned.join(', ')}
-     * Total 10 Target Keywords: ${partition.aboutKeywords.join(', ')}
+   - You MUST naturally weave ALL assigned target keywords into fluent, human, grammatically complete sentences:
+     * Pinned Keywords: ${partition.aboutPinned.length > 0 ? partition.aboutPinned.join(', ') : 'None'}
+     * Contextual Unpinned Keywords: ${partition.aboutUnpinned.join(', ')}
+     * Total Assigned Target Keywords (${partition.aboutKeywords.length}): ${partition.aboutKeywords.join(', ')}
    - ANTI-KEYWORD-STUFFING: ABSOLUTELY NEVER output a comma-separated list of keywords. Every keyword MUST be woven naturally into a sentence.
 
-2. "seoDescription" (3 MANDATORY KEYWORDS):
+2. "seoDescription" (EXACTLY 4 MANDATORY KEYWORDS):
    - STRICT CONSTRAINT: MUST BE STRICTLY UNDER 160 CHARACTERS (target 140 to 158 characters).
-   - Naturally weave these 3 keywords into a compelling Google SERP meta description sentence:
-     * 2 Pinned Keywords: ${partition.descPinned.join(', ')}
-     * 1 Unpinned Keyword: ${partition.descUnpinned.join(', ')}
-     * Total 3 Target Keywords: ${partition.descKeywords.join(', ')}
+   - Naturally weave these 4 keywords into a compelling Google SERP meta description sentence:
+     * Pinned Keywords: ${partition.descPinned.length > 0 ? partition.descPinned.join(', ') : 'None'}
+     * Unpinned Keywords: ${partition.descUnpinned.join(', ')}
+     * Total 4 Target Keywords: ${partition.descKeywords.join(', ')}
 
 3. "keywords" (EXACTLY 10 KEYWORD TAGS):
    - Return a JSON array of EXACTLY 10 keyword tags:
@@ -1407,15 +1429,15 @@ Visual Artwork Asset: "${input.imageFileName || 'Uploaded visual'}"
 ${input.extraGuidance?.trim() ? `User's Extra Guidance Directives: "${input.extraGuidance.trim()}"\n` : ''}
 ${visualInspectionPrompt}
 
-REQUIRED 4-PART "aboutPrompt" FLOW (weave all 10 keywords in fluent sentences, 151-199 words):
-1. Exciting Hook: "If you generate this prompt, you're going to love the results! In this prompt, you get..." + keywords 1-2.
-2. Visual Styling & Environment: exact garments, fabrics, colors, sunglasses, luxury marble interior + keywords 3-6.
-3. Realistic Photography: smartphone 9:16 framing, authentic skin pores, smile lines, zero AI smoothing + keywords 7-9.
-4. Concluding CTA: "Ready to create your own? Just copy the prompt above, paste it into your favorite AI image generator, and have fun creating viral photos!" + keyword 10.
+REQUIRED 4-PART "aboutPrompt" FLOW (weave assigned keywords in fluent sentences, 151-199 words):
+1. Exciting Hook: "If you generate this prompt, you're going to love the results! In this prompt, you get..." + keywords.
+2. Visual Styling & Environment: exact garments, fabrics, colors, sunglasses, luxury marble interior + keywords.
+3. Realistic Photography: smartphone 9:16 framing, authentic skin pores, smile lines, zero AI smoothing + keywords.
+4. Concluding CTA: "Ready to create your own? Just copy the prompt above, paste it into your favorite AI image generator, and have fun creating viral photos!" + keyword.
 
 MANDATORY KEYWORD ASSIGNMENTS:
-- About This Prompt (weave all 10 in fluent sentences, 151-199 words): ${partition.aboutKeywords.join(', ')}
-- SEO Meta Description (weave all 3 in sentence, max 160 chars): ${partition.descKeywords.join(', ')}
+- About This Prompt (${partition.aboutKeywords.length} keywords in fluent sentences, 151-199 words): ${partition.aboutKeywords.join(', ')}
+- SEO Meta Description (weave all 4 in sentence, max 160 chars): ${partition.descKeywords.join(', ')}
 - Exact 10 Tags: ${partition.tagKeywords.slice(0, 10).join(', ')}`;
 
   const buildPayload = (includeImage: boolean) => {
@@ -1553,6 +1575,8 @@ MANDATORY KEYWORD ASSIGNMENTS:
     keywords,
     keywordsMatched: partition.aboutKeywords,
     siteMetaTitle,
+    aboutKeywords: partition.aboutKeywords,
+    descKeywords: partition.descKeywords,
   };
 }
 

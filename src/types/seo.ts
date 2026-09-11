@@ -49,6 +49,8 @@ export interface ArigatoSiteSeoResult {
   keywords: string[]; // Strictly 6 to 9 keywords
   keywordsMatched: string[];
   siteMetaTitle?: string;
+  aboutKeywords?: string[];
+  descKeywords?: string[];
 }
 
 export interface GenerationInput {

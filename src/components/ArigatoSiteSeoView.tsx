@@ -449,6 +449,62 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                 <div className="p-4 text-xs font-mono leading-relaxed text-[#e2e8f0] whitespace-pre-wrap select-all selection:bg-[#5645d4] selection:text-white">
                   {result.aboutPrompt}
                 </div>
+
+                {/* Keywords Used in About This Prompt */}
+                {(() => {
+                  const aboutList = result.aboutKeywords || result.keywordsMatched || [];
+                  const pCount = aboutList.filter((k) =>
+                    pinnedKeywords.some((pk) => pk.toLowerCase() === k.toLowerCase())
+                  ).length;
+                  const uCount = aboutList.length - pCount;
+
+                  return (
+                    <div className="p-3 bg-[#13151d] border-t border-[#27272a]">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-mono text-[#94a3b8] flex items-center gap-1.5">
+                          <Tag className="w-3 h-3 text-[#5645d4]" />
+                          <span>
+                            Used Keywords ({aboutList.length}
+                            {pCount > 0 ? ` • ${pCount} Pin • ${uCount} Unpin` : ''})
+                          </span>
+                        </span>
+                        <span className="text-[10px] font-mono text-[#64748b]">Click to copy</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {aboutList.map((kw, i) => {
+                          const isPinned = pinnedKeywords.some(
+                            (pk) => pk.toLowerCase() === kw.toLowerCase()
+                          );
+                          const isCopied = copiedField === `about-kw-${i}`;
+                          return (
+                            <span
+                              key={i}
+                              onClick={() => copyToClipboard(kw, `about-kw-${i}`)}
+                              className={`text-[11px] font-mono px-2 py-1 rounded cursor-pointer transition-colors border flex items-center gap-1.5 ${
+                                isCopied
+                                  ? 'bg-[#22c55e]/20 text-[#4ade80] border-[#22c55e]/40'
+                                  : 'text-[#cbd5e1] bg-[#1e2230] hover:bg-[#5645d4] hover:text-white border-[#2d3748]'
+                              }`}
+                              title="Click to copy keyword"
+                            >
+                              {isCopied ? (
+                                <Check className="w-3 h-3 text-[#4ade80]" />
+                              ) : (
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isPinned ? 'bg-[#c084fc]' : 'bg-[#38bdf8]'
+                                  }`}
+                                ></span>
+                              )}
+                              <span>{kw}</span>
+                              {isPinned && <span className="text-[9px] text-[#c084fc]">📌</span>}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* 2. CODE BLOCK: "SEO Meta Description" (Strictly <= 160 characters) */}
@@ -505,6 +561,64 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                 <div className="p-4 text-xs font-mono leading-relaxed text-[#e2e8f0] select-all selection:bg-[#5645d4] selection:text-white">
                   {result.seoDescription}
                 </div>
+
+                {/* Keywords Used in SEO Meta Description */}
+                {(() => {
+                  const descList =
+                    result.descKeywords ||
+                    (result.keywordsMatched ? result.keywordsMatched.slice(0, 4) : []);
+                  const pCount = descList.filter((k) =>
+                    pinnedKeywords.some((pk) => pk.toLowerCase() === k.toLowerCase())
+                  ).length;
+                  const uCount = descList.length - pCount;
+
+                  return (
+                    <div className="p-3 bg-[#13151d] border-t border-[#27272a]">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-mono text-[#94a3b8] flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-[#22c55e]" />
+                          <span>
+                            Used Keywords ({descList.length}
+                            {pCount > 0 ? ` • ${pCount} Pin • ${uCount} Unpin` : ''})
+                          </span>
+                        </span>
+                        <span className="text-[10px] font-mono text-[#64748b]">Click to copy</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {descList.map((kw, i) => {
+                          const isPinned = pinnedKeywords.some(
+                            (pk) => pk.toLowerCase() === kw.toLowerCase()
+                          );
+                          const isCopied = copiedField === `desc-kw-${i}`;
+                          return (
+                            <span
+                              key={i}
+                              onClick={() => copyToClipboard(kw, `desc-kw-${i}`)}
+                              className={`text-[11px] font-mono px-2 py-1 rounded cursor-pointer transition-colors border flex items-center gap-1.5 ${
+                                isCopied
+                                  ? 'bg-[#22c55e]/20 text-[#4ade80] border-[#22c55e]/40'
+                                  : 'text-[#cbd5e1] bg-[#1e2230] hover:bg-[#22c55e] hover:text-white border-[#2d3748]'
+                              }`}
+                              title="Click to copy keyword"
+                            >
+                              {isCopied ? (
+                                <Check className="w-3 h-3 text-[#4ade80]" />
+                              ) : (
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isPinned ? 'bg-[#c084fc]' : 'bg-[#4ade80]'
+                                  }`}
+                                ></span>
+                              )}
+                              <span>{kw}</span>
+                              {isPinned && <span className="text-[9px] text-[#c084fc]">📌</span>}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* 3. CODE BLOCK: "SEO Keywords" (Strictly 6 to 9 keywords) */}
@@ -525,16 +639,27 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
 
                   <div className="flex items-center gap-2 sm:gap-3">
                     {/* Count verification badge */}
-                    <span
-                      className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                        result.keywords.length === 9
-                          ? 'bg-[#22c55e]/15 text-[#4ade80] border border-[#22c55e]/30'
-                          : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>{result.keywords.length} tags (4 Pin • 5 Unpin)</span>
-                    </span>
+                    {(() => {
+                      const tagPinnedCount = result.keywords.filter((k) =>
+                        pinnedKeywords.some((pk) => pk.toLowerCase() === k.toLowerCase())
+                      ).length;
+                      const tagUnpinnedCount = result.keywords.length - tagPinnedCount;
+                      return (
+                        <span
+                          className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                            result.keywords.length >= 9
+                              ? 'bg-[#22c55e]/15 text-[#4ade80] border border-[#22c55e]/30'
+                              : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>
+                            {result.keywords.length} tags
+                            {tagPinnedCount > 0 ? ` (${tagPinnedCount} Pin • ${tagUnpinnedCount} Unpin)` : ''}
+                          </span>
+                        </span>
+                      );
+                    })()}
 
                     {/* Copy Button */}
                     <button
@@ -563,18 +688,46 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                 </div>
 
                 {/* Interactive Click-to-Copy Chips */}
-                <div className="p-3 bg-[#13151d] border-t border-[#27272a] flex flex-wrap gap-1.5">
-                  {result.keywords.map((kw, i) => (
-                    <span
-                      key={i}
-                      onClick={() => copyToClipboard(kw, `kw-${i}`)}
-                      className="text-[11px] font-mono text-[#cbd5e1] bg-[#1e2230] hover:bg-[#5645d4] hover:text-white px-2 py-1 rounded cursor-pointer transition-colors border border-[#2d3748] flex items-center gap-1"
-                      title="Click to copy single keyword"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8]"></span>
-                      <span>{kw}</span>
+                <div className="p-3 bg-[#13151d] border-t border-[#27272a]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-mono text-[#94a3b8] flex items-center gap-1.5">
+                      <Tag className="w-3 h-3 text-[#f59e0b]" />
+                      <span>Keywords Tags ({result.keywords.length})</span>
                     </span>
-                  ))}
+                    <span className="text-[10px] font-mono text-[#64748b]">Click to copy</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {result.keywords.map((kw, i) => {
+                      const isPinned = pinnedKeywords.some(
+                        (pk) => pk.toLowerCase() === kw.toLowerCase()
+                      );
+                      const isCopied = copiedField === `kw-${i}`;
+                      return (
+                        <span
+                          key={i}
+                          onClick={() => copyToClipboard(kw, `kw-${i}`)}
+                          className={`text-[11px] font-mono px-2 py-1 rounded cursor-pointer transition-colors border flex items-center gap-1.5 ${
+                            isCopied
+                              ? 'bg-[#22c55e]/20 text-[#4ade80] border-[#22c55e]/40'
+                              : 'text-[#cbd5e1] bg-[#1e2230] hover:bg-[#f59e0b] hover:text-white border-[#2d3748]'
+                          }`}
+                          title="Click to copy single keyword"
+                        >
+                          {isCopied ? (
+                            <Check className="w-3 h-3 text-[#4ade80]" />
+                          ) : (
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isPinned ? 'bg-[#c084fc]' : 'bg-[#38bdf8]'
+                              }`}
+                            ></span>
+                          )}
+                          <span>{kw}</span>
+                          {isPinned && <span className="text-[9px] text-[#c084fc]">📌</span>}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
