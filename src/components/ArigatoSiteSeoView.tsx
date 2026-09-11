@@ -26,7 +26,6 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
   siteKeywords,
   onOpenKeywords,
 }) => {
-  const [prompt, setPrompt] = useState('');
   const [extraGuidance, setExtraGuidance] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string>('');
@@ -45,21 +44,21 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
   const activeKeywords = siteKeywords.filter((k) => k.active).map((k) => k.text);
 
   const handleGenerate = async () => {
-    if (!prompt.trim() && !imagePreview) {
-      alert('Please enter a prompt or upload an artwork image.');
+    if (!imagePreview) {
+      alert('Please upload an artwork image to generate Arigato Site SEO.');
       return;
     }
 
     setIsGenerating(true);
     setProgressStep(1);
     setProgressPercent(10);
-    setStatusMessage('Scanning prompt parameters and aesthetic composition...');
+    setStatusMessage('Reverse-prompting visual artwork & analyzing aesthetics...');
 
     try {
       const output = await generateArigatoSiteSeo(
         {
           category: 'site',
-          prompt: prompt.trim() || 'A high-impact visual artwork with dramatic composition and cinematic lighting',
+          prompt: imageFileName || 'Aesthetic visual artwork',
           extraGuidance: extraGuidance.trim() || undefined,
           imageDataUrl: imagePreview || undefined,
           imageFileName: imageFileName || undefined,
@@ -195,25 +194,6 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
               </div>
             </div>
 
-            {/* Prompt Text Area */}
-            <div className="mb-4 sm:mb-5">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-[#37352f]">
-                  Prompt Text & Creative Details
-                </label>
-                <span className="text-[10px] text-[#787671]">
-                  {prompt.length} chars
-                </span>
-              </div>
-              <textarea
-                rows={3}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="e.g. A hyper-detailed isometric render of an ethereal glass greenhouse floating in clouds, lush tropical flora, golden hour ray tracing..."
-                className="w-full p-3 text-sm sm:text-xs bg-[#fafaf9] border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:bg-white text-[#1a1a1a] transition-all resize-y"
-              />
-            </div>
-
             {/* Extra Guidance / Custom System Directives */}
             <div className="mb-4 sm:mb-5">
               <div className="flex items-center justify-between mb-1.5">
@@ -229,13 +209,13 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                 rows={2}
                 value={extraGuidance}
                 onChange={(e) => setExtraGuidance(e.target.value)}
-                placeholder="e.g. Write in a friendly conversational tone, highlight the 1986 date stamp prominently, emphasize the mirror selfie angle, avoid robotic phrases..."
+                placeholder="e.g. Highlight their cute romantic chemistry, focus on the 1986 date stamp, emphasize the candid mirror selfie angle, write with warm human charm..."
                 className="w-full p-2.5 text-sm sm:text-xs bg-[#fafaf9] border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:bg-white text-[#1a1a1a] transition-all resize-y placeholder:text-[#9c9992]"
               />
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <span className="text-[10px] text-[#787671] mr-0.5">Quick ideas:</span>
                 {[
-                  '✨ Playful & Conversational',
+                  '✨ Cute & Romantic Chemistry',
                   '📸 Emphasize 1986 timestamp',
                   '🪞 Highlight mirror selfie angle',
                   '🔥 Viral creator energy',

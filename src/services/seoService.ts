@@ -369,21 +369,16 @@ export function generateSmartAboutPrompt(
   const kws = parts.aboutKeywords;
   const v = visual || analyzeVisualAndPrompt(input);
 
-  // Para 1: What you see in the prompt (simple, warm, human)
-  const p1 = `If you want a cute, realistic photo idea, this prompt creates ${v.sceneTitle} for ${kws[0] || 'realistic photo prompt'} and ${kws[1] || 'trending ai prompt'}. You get to see ${v.subjectActionDesc} that brings ${kws[2] || 'authentic photo'} to life with authentic charm.`;
+  // Para 1: In this prompt, you'll see {cute romantic description of image + 2 initial keywords attached}
+  const p1 = `In this prompt, you'll see ${v.sceneTitle} with ${v.subjectActionDesc} that brings ${kws[0] || 'realistic photo prompt'} and ${kws[1] || 'trending ai prompt'} to life with sweet authentic charm.`;
 
-  // Para 2: Details on facial realism & natural features
-  const p2 = `What makes this prompt special is how naturally it captures real facial features for ${kws[3] || 'aesthetic look'} and ${kws[4] || 'realistic prompt'}. Instead of fake AI smoothing, it preserves authentic skin texture, natural smile lines, and true-to-life expressions with complete realism.`;
+  // Para 2 & 3: Weave 7 keywords into fluent human sentences describing facial realism & relaxed styling
+  const p2 = `What makes this prompt special is how naturally it captures real facial features for ${kws[2] || 'aesthetic look'}, ${kws[3] || 'viral couple prompt'}, and ${kws[4] || 'realistic prompt'}. Instead of fake AI smoothing, it preserves authentic skin texture, natural smile lines, and true-to-life expressions with complete realism.`;
 
-  // Para 3: Outfits, lighting & smartphone feel
-  let p3 = `The styling stays relaxed with ${v.outfitDesc} tailored for ${kws[5] || 'trending prompt girls'} and ${kws[6] || 'trending prompt boys'}. Combined with ${v.aestheticDesc}, it creates an effortless look for ${kws[7] || 'candid photo'} and ${kws[8] || 'selfie poses'}.`;
-  if (input.extraGuidance?.trim()) {
-    const cleanGuide = input.extraGuidance.trim().replace(/[.]+$/, '');
-    p3 += ` Notice how nicely it highlights ${cleanGuide}.`;
-  }
+  const p3 = `The styling stays relaxed with ${v.outfitDesc} tailored for ${kws[5] || 'aesthetic couple portrait'}, ${kws[6] || 'couple photo ideas'}, and ${kws[7] || 'candid photography'}. Combined with ${v.aestheticDesc}, it creates an effortless look for ${kws[8] || 'candid photo poses'}.`;
 
-  // Para 4: Friendly call to action (try it, copy it, have fun!)
-  const p4 = `Whether you want to try ${kws[9] || 'smartphone photo'} or ${v.photoGoal}, this prompt is ready. Just copy the prompt above, try it in your AI generator, and have fun creating your own viral photos!`;
+  // Para 4: Mandatory friendly CTA as requested by user
+  const p4 = `Whether you want to try ${kws[9] || (v.subjectType === 'couple' ? 'smartphone couple photo' : 'smartphone photo')} or ${v.photoGoal}, this prompt is ready. Just copy the prompt above, try it in your AI generator, and have fun creating your own viral photos!`;
 
   const fullPrompt = `${p1}\n\n${p2}\n\n${p3}\n\n${p4}`;
   return enforceWordLimit(fullPrompt, 199);
@@ -1212,19 +1207,20 @@ async function executeCustomSiteApi(
   const endpoint = resolveApiUrl(config);
 
   const systemContent = `You are a friendly, creative AI prompt curator and blogger at Arigato Labs.
-Your task is to analyze the user's prompt text and reference visual to write an engaging, simple, human-style "About this prompt" guide, a click-worthy Google SERP meta description, and 9 SEO tags.
+Your task is to analyze the attached visual artwork and reverse-prompt it in simple, romantic, candid English to write an engaging "About this prompt" guide, a click-worthy Google SERP meta description, and 9 SEO tags.
 
 ${v.reversePromptText}
 ${input.extraGuidance?.trim() ? `
-USER'S CUSTOM EXTRA GUIDANCE / SYSTEM DIRECTIVES (MANDATORY PRIORITY):
-The user has specified explicit directives for how this SEO content must be written. You MUST follow these directives strictly:
+USER'S CUSTOM EXTRA GUIDANCE / SYSTEM DIRECTIVES:
+The user has specified custom instructions on how this SEO content must be analyzed and written:
 """
 ${input.extraGuidance.trim()}
 """
-Ensure the tone, specific details, focus areas, and creative instructions requested above are prominently reflected across the paragraphs and description!
+Apply these directives strictly to guide your tone, visual focus, and descriptions.
+CRITICAL: DO NOT literally quote or print the user's raw directives in the copy (e.g. NEVER write "Notice how nicely it highlights [raw instructions]"). Instead, execute the directives as writing instructions!
 ` : ''}
 TONE & WRITING STYLE:
-- Write in simple, warm, conversational, human English (like an enthusiastic creator sharing an awesome prompt with friends on a blog).
+- Write in simple, warm, romantic/candid, conversational human English (like an enthusiastic creator sharing an awesome prompt with friends on a blog).
 - DO NOT sound like a robotic system specification or legal contract. NEVER use stiff phrases like "This creative photography specification...", "Strict facial identity preservation is maintained as the highest priority...", etc.
 - No plagiarism: Write with 100% original, fresh human energy.
 
@@ -1241,18 +1237,20 @@ This is for "Arigato Site SEO" (NOT Pinterest). Do NOT generate Pinterest board 
 CRITICAL KEYWORD RULES (STRICT COMPLIANCE REQUIRED):
 We have pre-selected the exact keywords you must use for each section:
 
-1. "aboutPrompt" (10 MANDATORY KEYWORDS):
+1. "aboutPrompt" (10 MANDATORY KEYWORDS, STRICTLY UNDER 199 WORDS, 4 STRUCTURED PARAGRAPHS):
    - You MUST naturally weave ALL 10 of these keywords into fluent, human, grammatically complete sentences across 4 structured paragraphs:
      * 5 Pinned Keywords: ${partition.aboutPinned.join(', ')}
      * 5 Contextual Keywords: ${partition.aboutUnpinned.join(', ')}
      * Total 10 Target Keywords: ${partition.aboutKeywords.join(', ')}
-   - STRICT CONSTRAINT: Word count MUST be UNDER 199 words (target 140 to 175 words).
    - ANTI-KEYWORD-STUFFING: ABSOLUTELY NEVER output a comma-separated list of keywords. Every keyword MUST be woven naturally into a sentence.
-   - Paragraph Guidelines:
-     * Para 1 (What you see in the prompt): Tell the reader in simple English what they get to see in this prompt: the scene, subject, pose, and aesthetic charm. (Weave 3 keywords naturally).
-     * Para 2 (Details on facial features): Explain what makes the prompt special: authentic facial features, real skin texture without fake AI smoothing, and lifelike expressions. (Weave 2 keywords naturally).
-     * Para 3 (Outfits & Lighting): Describe the relaxed styling, outfits, natural fabric folds, ambient lighting, and candid camera vibes. (Weave 2 keywords naturally).
-     * Para 4 (Friendly Call-To-Action): Conclude with a warm, human invitation telling the reader to copy the prompt, try it in their AI generator, and have fun creating their own viral photos! (Weave 3 keywords naturally).
+   - EXACT 4-PARAGRAPH BLUEPRINT:
+     * Para 1 (Visual Reverse Prompt & Cute Description):
+       Start with: "In this prompt, you'll see [a cute, romantic, candid description of what is happening in the visual image]..." and naturally attach 2 initial keywords: ${partition.aboutKeywords.slice(0, 2).join(', ')}.
+     * Paras 2 & 3 (Realism & Relaxed Styling — Weaving 7 Keywords):
+       Weave the next 7 keywords (${partition.aboutKeywords.slice(2, 9).join(', ')}) naturally into fluent sentences describing authentic facial features (real skin texture, natural smile lines, no artificial AI smoothing), relaxed styling, and soft ambient lighting.
+     * Para 4 (Mandatory Friendly Call-To-Action + 10th Keyword):
+       Conclude with the exact friendly CTA:
+       "Whether you want to try ${partition.aboutKeywords[9] || (v.subjectType === 'couple' ? 'smartphone couple photo' : 'smartphone photo')} or ${v.photoGoal}, this prompt is ready. Just copy the prompt above, try it in your AI generator, and have fun creating your own viral photos!"
 
 2. "seoDescription" (3 MANDATORY KEYWORDS):
    - STRICT CONSTRAINT: MUST BE STRICTLY UNDER 160 CHARACTERS (target 130 to 155 characters).
@@ -1272,8 +1270,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDes
 
   const canUseVision = Boolean(input.imageDataUrl && isVisionModel(config.model || ''));
   const userTextPrompt = `Create the authoritative Arigato Site SEO package for:
-Prompt: "${input.prompt || v.sceneTitle}"
-${input.extraGuidance?.trim() ? `User's Extra Guidance: "${input.extraGuidance.trim()}"\n` : ''}${v.reversePromptText}
+Visual Artwork Asset: "${input.imageFileName || 'Uploaded visual'}"
+${input.extraGuidance?.trim() ? `User's Extra Guidance Directives: "${input.extraGuidance.trim()}"\n` : ''}${v.reversePromptText}
 
 REQUIRED KEYWORD ASSIGNMENTS:
 - About This Prompt (weave all 10 in sentences): ${partition.aboutKeywords.join(', ')}
