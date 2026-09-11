@@ -27,6 +27,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
   onOpenKeywords,
 }) => {
   const [prompt, setPrompt] = useState('');
+  const [extraGuidance, setExtraGuidance] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string>('');
   const [pinterestFormat, setPinterestFormat] = useState<'with_link' | 'search_steps'>('with_link');
@@ -62,6 +63,7 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
         {
           category: 'pinterest',
           prompt: prompt.trim() || 'Aesthetic digital visual artwork with cinematic lighting',
+          extraGuidance: extraGuidance.trim() || undefined,
           imageDataUrl: imagePreview || undefined,
           imageFileName: imageFileName || undefined,
           activeKeywords,
@@ -318,6 +320,49 @@ export const PinterestSeoView: React.FC<PinterestSeoViewProps> = ({
                 placeholder="e.g. A futuristic neon cyberpunk ramen shop in rainy Tokyo, cinematic volumetric lighting, retro anime aesthetic..."
                 className="w-full p-3 text-sm sm:text-xs bg-[#fafaf9] border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:bg-white text-[#1a1a1a] transition-all resize-y"
               />
+            </div>
+
+            {/* Extra Guidance / Custom System Directives */}
+            <div className="mb-4 sm:mb-5">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-[#37352f] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#e60023]" />
+                  <span>Extra Guidance (Optional)</span>
+                </label>
+                <span className="text-[10px] text-[#787671]">
+                  System prompt directives • {extraGuidance.length} chars
+                </span>
+              </div>
+              <textarea
+                rows={2}
+                value={extraGuidance}
+                onChange={(e) => setExtraGuidance(e.target.value)}
+                placeholder="e.g. Make pin titles super dramatic and seductive, focus on viral aesthetic keywords, emphasize vintage film grain, write for high-click CTR..."
+                className="w-full p-2.5 text-sm sm:text-xs bg-[#fafaf9] border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#e60023] focus:bg-white text-[#1a1a1a] transition-all resize-y placeholder:text-[#9c9992]"
+              />
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                <span className="text-[10px] text-[#787671] mr-0.5">Quick ideas:</span>
+                {[
+                  '🔥 High-CTR viral hooks',
+                  '📸 Emphasize 1980s retro vibe',
+                  '💋 Romantic & sensual tone',
+                  '🔍 Maximize search discoverability',
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => {
+                      const textToAppend = chip.replace(/^[^\w]+/, '').trim();
+                      setExtraGuidance((prev) =>
+                        prev ? `${prev}, ${textToAppend}` : textToAppend
+                      );
+                    }}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-[#fde0ec] text-[#e60023] border border-[#f8b4d9] hover:bg-[#fad2e5] transition-all cursor-pointer"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Injected Pinterest Keywords Section */}

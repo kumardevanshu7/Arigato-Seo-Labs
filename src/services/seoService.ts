@@ -234,8 +234,9 @@ export interface VisualAnalysis {
 export function analyzeVisualAndPrompt(input: GenerationInput): VisualAnalysis {
   const promptText = (input.prompt || '').toLowerCase();
   const fileName = (input.imageFileName || '').toLowerCase();
+  const guidanceText = (input.extraGuidance || '').toLowerCase();
   const keywordsText = (input.activeKeywords || []).concat(input.pinnedKeywords || []).join(' ').toLowerCase();
-  const allText = `${promptText} ${fileName} ${keywordsText}`;
+  const allText = `${promptText} ${guidanceText} ${fileName} ${keywordsText}`;
 
   const coupleRegex = /\b(couple|two\s*people|boyfriend|girlfriend|husband|wife|together|pair|candid\s*closeness|romantic\s*duo|kissing|hugging|intimate)\b/i;
   const femaleRegex = /\b(girl|female|woman|lady|she|her|polka|dress|saree|skirt|bangles|bride|queen|yearbook\s*girl)\b/i;
@@ -248,8 +249,14 @@ export function analyzeVisualAndPrompt(input: GenerationInput): VisualAnalysis {
   if (input.subjectFocus && input.subjectFocus !== 'auto') {
     subjectType = input.subjectFocus === 'portrait' ? 'solo_female' : input.subjectFocus;
   } else {
-    // If prompt explicitly mentions couple
-    if (coupleRegex.test(promptText)) {
+    // If extraGuidance explicitly indicates subject
+    if (femaleRegex.test(guidanceText) && !maleRegex.test(guidanceText) && !coupleRegex.test(guidanceText)) {
+      subjectType = 'solo_female';
+    } else if (maleRegex.test(guidanceText) && !femaleRegex.test(guidanceText) && !coupleRegex.test(guidanceText)) {
+      subjectType = 'solo_male';
+    } else if (coupleRegex.test(guidanceText)) {
+      subjectType = 'couple';
+    } else if (coupleRegex.test(promptText)) {
       subjectType = 'couple';
     } else if (femaleRegex.test(promptText + ' ' + fileName)) {
       subjectType = 'solo_female';
@@ -369,7 +376,11 @@ export function generateSmartAboutPrompt(
   const p2 = `What makes this prompt special is how naturally it captures real facial features for ${kws[3] || 'aesthetic look'} and ${kws[4] || 'realistic prompt'}. Instead of fake AI smoothing, it preserves authentic skin texture, natural smile lines, and true-to-life expressions with complete realism.`;
 
   // Para 3: Outfits, lighting & smartphone feel
-  const p3 = `The styling stays relaxed with ${v.outfitDesc} tailored for ${kws[5] || 'trending prompt girls'} and ${kws[6] || 'trending prompt boys'}. Combined with ${v.aestheticDesc}, it creates an effortless look for ${kws[7] || 'candid photo'} and ${kws[8] || 'selfie poses'}.`;
+  let p3 = `The styling stays relaxed with ${v.outfitDesc} tailored for ${kws[5] || 'trending prompt girls'} and ${kws[6] || 'trending prompt boys'}. Combined with ${v.aestheticDesc}, it creates an effortless look for ${kws[7] || 'candid photo'} and ${kws[8] || 'selfie poses'}.`;
+  if (input.extraGuidance?.trim()) {
+    const cleanGuide = input.extraGuidance.trim().replace(/[.]+$/, '');
+    p3 += ` Notice how nicely it highlights ${cleanGuide}.`;
+  }
 
   // Para 4: Friendly call to action (try it, copy it, have fun!)
   const p4 = `Whether you want to try ${kws[9] || 'smartphone photo'} or ${v.photoGoal}, this prompt is ready. Just copy the prompt above, try it in your AI generator, and have fun creating your own viral photos!`;
@@ -923,7 +934,14 @@ async function executeCustomPinterestApi(input: GenerationInput, config: ApiConf
 Your task is to analyze the user's prompt text and reference visual to generate high-CTR Pinterest SEO pins.
 
 ${v.reversePromptText}
-
+${input.extraGuidance?.trim() ? `
+USER'S CUSTOM EXTRA GUIDANCE / SYSTEM DIRECTIVES (MANDATORY PRIORITY):
+The user has specified explicit directives for how these Pinterest pins must be written:
+"""
+${input.extraGuidance.trim()}
+"""
+Ensure the tone, hooks, specific details, and creative instructions requested above are prominently reflected!
+` : ''}
 STRICT SUBJECT ACCURACY:
 ${v.subjectType === 'solo_female'
   ? '- The subject is ONE SINGLE WOMAN/GIRL. DO NOT describe "two people", "couple closeness", or "romance". Focus on HER vintage/candid portrait.'
@@ -951,7 +969,7 @@ Do NOT include markdown fences or think tags in the JSON.`;
   const canUseVision = Boolean(input.imageDataUrl && isVisionModel(config.model || ''));
   const userTextPrompt = `Create ${requestedVariations} distinct high-converting ${format === 'with_link' ? 'With Link' : 'Search Steps'} Pinterest SEO variations for:
 Prompt: "${input.prompt || v.sceneTitle}"
-${v.reversePromptText}
+${input.extraGuidance?.trim() ? `User's Extra Guidance: "${input.extraGuidance.trim()}"\n` : ''}${v.reversePromptText}
 Pinned Mandatory Keywords: ${input.pinnedKeywords?.join(', ') || 'None'}
 Configured Keywords: ${input.activeKeywords.join(', ')}`;
 
@@ -1197,7 +1215,14 @@ async function executeCustomSiteApi(
 Your task is to analyze the user's prompt text and reference visual to write an engaging, simple, human-style "About this prompt" guide, a click-worthy Google SERP meta description, and 9 SEO tags.
 
 ${v.reversePromptText}
-
+${input.extraGuidance?.trim() ? `
+USER'S CUSTOM EXTRA GUIDANCE / SYSTEM DIRECTIVES (MANDATORY PRIORITY):
+The user has specified explicit directives for how this SEO content must be written. You MUST follow these directives strictly:
+"""
+${input.extraGuidance.trim()}
+"""
+Ensure the tone, specific details, focus areas, and creative instructions requested above are prominently reflected across the paragraphs and description!
+` : ''}
 TONE & WRITING STYLE:
 - Write in simple, warm, conversational, human English (like an enthusiastic creator sharing an awesome prompt with friends on a blog).
 - DO NOT sound like a robotic system specification or legal contract. NEVER use stiff phrases like "This creative photography specification...", "Strict facial identity preservation is maintained as the highest priority...", etc.
@@ -1248,7 +1273,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDes
   const canUseVision = Boolean(input.imageDataUrl && isVisionModel(config.model || ''));
   const userTextPrompt = `Create the authoritative Arigato Site SEO package for:
 Prompt: "${input.prompt || v.sceneTitle}"
-${v.reversePromptText}
+${input.extraGuidance?.trim() ? `User's Extra Guidance: "${input.extraGuidance.trim()}"\n` : ''}${v.reversePromptText}
 
 REQUIRED KEYWORD ASSIGNMENTS:
 - About This Prompt (weave all 10 in sentences): ${partition.aboutKeywords.join(', ')}

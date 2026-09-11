@@ -61,6 +61,7 @@ export interface GenerationInput {
   pinterestFormat?: 'with_link' | 'search_steps'; // Dual-mode for Pinterest: With Link CTA vs Google Search Steps
   variationCount?: number; // Desired number of pin variations (2, 3, 4, 5 - default 2)
   subjectFocus?: 'auto' | 'solo_female' | 'solo_male' | 'couple' | 'portrait'; // Subject detection override
+  extraGuidance?: string; // Optional custom directives/instructions for system prompt (tone, specific details, style)
 }
 
 export interface GenerationState {

@@ -27,6 +27,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
   onOpenKeywords,
 }) => {
   const [prompt, setPrompt] = useState('');
+  const [extraGuidance, setExtraGuidance] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string>('');
 
@@ -59,6 +60,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
         {
           category: 'site',
           prompt: prompt.trim() || 'A high-impact visual artwork with dramatic composition and cinematic lighting',
+          extraGuidance: extraGuidance.trim() || undefined,
           imageDataUrl: imagePreview || undefined,
           imageFileName: imageFileName || undefined,
           activeKeywords,
@@ -210,6 +212,49 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                 placeholder="e.g. A hyper-detailed isometric render of an ethereal glass greenhouse floating in clouds, lush tropical flora, golden hour ray tracing..."
                 className="w-full p-3 text-sm sm:text-xs bg-[#fafaf9] border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:bg-white text-[#1a1a1a] transition-all resize-y"
               />
+            </div>
+
+            {/* Extra Guidance / Custom System Directives */}
+            <div className="mb-4 sm:mb-5">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-[#37352f] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#5645d4]" />
+                  <span>Extra Guidance (Optional)</span>
+                </label>
+                <span className="text-[10px] text-[#787671]">
+                  System prompt directives • {extraGuidance.length} chars
+                </span>
+              </div>
+              <textarea
+                rows={2}
+                value={extraGuidance}
+                onChange={(e) => setExtraGuidance(e.target.value)}
+                placeholder="e.g. Write in a friendly conversational tone, highlight the 1986 date stamp prominently, emphasize the mirror selfie angle, avoid robotic phrases..."
+                className="w-full p-2.5 text-sm sm:text-xs bg-[#fafaf9] border border-[#c8c4be] rounded-md focus:outline-none focus:border-[#5645d4] focus:bg-white text-[#1a1a1a] transition-all resize-y placeholder:text-[#9c9992]"
+              />
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                <span className="text-[10px] text-[#787671] mr-0.5">Quick ideas:</span>
+                {[
+                  '✨ Playful & Conversational',
+                  '📸 Emphasize 1986 timestamp',
+                  '🪞 Highlight mirror selfie angle',
+                  '🔥 Viral creator energy',
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => {
+                      const textToAppend = chip.replace(/^[^\w]+/, '').trim();
+                      setExtraGuidance((prev) =>
+                        prev ? `${prev}, ${textToAppend}` : textToAppend
+                      );
+                    }}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-[#f0effb] text-[#5645d4] border border-[#dcd8f6] hover:bg-[#e4e1f9] transition-all cursor-pointer"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Injected Site Keywords Section */}
