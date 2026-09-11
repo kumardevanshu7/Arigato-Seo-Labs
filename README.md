@@ -1,4 +1,4 @@
-﻿# Arigato SEO Labs
+# Arigato SEO Labs
 
 <div align="center">
   <img src="public/arigato-labs-logo.png" alt="Arigato Labs" width="380" />
@@ -183,7 +183,7 @@ The included `vercel.json` file automatically proxies `/modal-api` calls to your
   "rewrites": [
     {
       "source": "/modal-api/(.*)",
-      "destination": "https://devansh-grow--ep-kimi-k3-server.us-west.modal.direct/v1/$1"
+      "destination": "https://devansh-grow--ep-deepseek-v4-1-flash-1-server.us-west.modal.direct/v1/$1"
     },
     {
       "source": "/(.*)",
