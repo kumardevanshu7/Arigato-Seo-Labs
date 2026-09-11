@@ -195,24 +195,89 @@ export interface ArigatoSiteKeywordPartition {
   tagPinned: string[];
   tagUnpinned: string[];
 }
+/**
+ * Filters keywords so that subject-incompatible terms (e.g. couple words in a solo girl image)
+ * are strictly removed and never passed to the AI or copy.
+ */
+export function isKeywordCompatibleWithSubject(keyword: string, subjectType: string): boolean {
+  const kw = keyword.toLowerCase().trim();
+  const coupleWords = /\b(couple|couples|kiss|kissing|boyfriend|husband|wife|together|pair|duo|two\s*people|intimate\s*couple|candid\s*closeness|romantic\s*duo|couple\s*aesthetic|couple\s*photo|couple\s*prompt|couple\s*portrait|couple\s*selfie|couple\s*photography|romantic\s*couple)\b/i;
+  const femaleWords = /\b(girl|girls|female|females|woman|women|lady|ladies|she|her|bride|queen)\b/i;
+  const maleWords = /(?<!spider-?|super-?|bat-?|iron-?)\b(boy|boys|male|males|man|men|guy|guys|him|he|groom|king|gentleman|brother)\b/i;
+
+  if (subjectType === 'solo_female' || subjectType === 'portrait') {
+    if (coupleWords.test(kw)) return false;
+    if (maleWords.test(kw)) return false;
+    return true;
+  }
+
+  if (subjectType === 'solo_male') {
+    if (coupleWords.test(kw)) return false;
+    if (femaleWords.test(kw)) return false;
+    return true;
+  }
+
+  if (subjectType === 'couple') {
+    if (/\b(solo|single\s*girl|single\s*boy)\b/i.test(kw)) return false;
+    return true;
+  }
+
+  return true;
+}
 
 /**
- * Partitions Arigato Site keywords according to strict user rules:
- * 1. "about-this-prompt.md": 10 keywords in sentences (5 pinned + 5 random unpinned)
- * 2. "seo-meta-description.txt": 3 keywords in sentence (2 random pinned + 1 random unpinned)
- * 3. "seo-keywords.csv": 9 tags (4 random pinned + 5 random unpinned)
+ * Partitions Arigato Site keywords intelligently according to visual subject and strict user rules:
+ * 1. "about-this-prompt.md": 9 keywords (up to 5 pinned + unpinned to reach 9; or if no pinned, 4 unpinned or 6-7 if 6-7 exist)
+ * 2. "seo-meta-description.txt": EXACTLY 1 KEYWORD (best matching keyword + dedicated image description)
+ * 3. "seo-keywords.csv": 10 tags (compatible pinned + unpinned)
  */
-export function partitionArigatoSiteKeywords(input: GenerationInput): ArigatoSiteKeywordPartition {
-  // 1. Get pinned keywords (max 5)
-  const pinnedList = (input.pinnedKeywords || []).map((k) => k.trim()).filter(Boolean).slice(0, 5);
+export function partitionArigatoSiteKeywords(
+  input: GenerationInput,
+  visual?: VisualAnalysis
+): ArigatoSiteKeywordPartition {
+  const v = visual || analyzeVisualAndPrompt(input);
+  const subjectType = v.subjectType;
 
-  // 2. Get active unpinned keywords
-  const unpinnedList = (input.activeKeywords || [])
+  // 1. Filter pinned keywords by subject compatibility (strictly reject couple words if solo)
+  const rawPinned = (input.pinnedKeywords || []).map((k) => k.trim()).filter(Boolean);
+  const compatiblePinned = rawPinned.filter((k) => isKeywordCompatibleWithSubject(k, subjectType));
+  const pinnedList = compatiblePinned.slice(0, 5);
+
+  // 2. Filter active unpinned keywords by subject compatibility
+  const rawUnpinned = (input.activeKeywords || [])
     .map((k) => k.trim())
     .filter((k) => Boolean(k) && !pinnedList.some((pk) => pk.toLowerCase() === k.toLowerCase()));
+  const compatibleUnpinned = rawUnpinned.filter((k) => isKeywordCompatibleWithSubject(k, subjectType));
 
-  // 3. Fallback high-intent keywords if active list has fewer items
-  const fallbackSiteKeywords = [
+  // 3. Fallback high-intent keywords customized per subject
+  const fallbackSoloFemale = [
+    'gemini girl prompt',
+    'trending prompt girls',
+    'aesthetic girl portrait',
+    'solo girl photo',
+    'smartphone portrait',
+    'candid photo poses',
+    'aesthetic photography',
+    'viral portrait prompt',
+    'gemini photo prompt',
+    'aesthetic mirror selfie',
+    'natural light portrait',
+  ];
+
+  const fallbackSoloMale = [
+    'gemini boy prompt',
+    'trending prompt boys',
+    'aesthetic portrait for men',
+    'solo boy photo',
+    'smartphone portrait',
+    'candid photo poses',
+    'aesthetic photography',
+    'viral portrait prompt',
+    'gemini photo prompt',
+    'men photography ideas',
+  ];
+
+  const fallbackCouple = [
     'gemini couple prompt',
     'realistic couple prompt for gemini ai',
     'couple prompt',
@@ -227,8 +292,25 @@ export function partitionArigatoSiteKeywords(input: GenerationInput): ArigatoSit
     'couple photography ideas',
   ];
 
-  const enrichedUnpinned: string[] = [...unpinnedList];
-  for (const fb of fallbackSiteKeywords) {
+  const subjectFallbacks = subjectType === 'solo_female'
+    ? fallbackSoloFemale
+    : subjectType === 'solo_male'
+    ? fallbackSoloMale
+    : fallbackCouple;
+
+  // Inject dynamic visual keywords if specific concepts detected (e.g. spiderman)
+  const allVisualContext = `${input.prompt || ''} ${input.imageFileName || ''} ${input.extraGuidance || ''} ${input.visualHint || ''}`.toLowerCase();
+  const dynamicVisualKws: string[] = [];
+  if (/spider-?man|cosplay/i.test(allVisualContext)) {
+    if (subjectType === 'solo_female') {
+      dynamicVisualKws.push('spiderman girl prompt', 'spiderman cosplay portrait', 'spiderman suit mirror selfie');
+    } else {
+      dynamicVisualKws.push('spiderman prompt', 'spiderman cosplay photo', 'spiderman suit selfie');
+    }
+  }
+
+  const enrichedUnpinned: string[] = [...dynamicVisualKws, ...compatibleUnpinned];
+  for (const fb of subjectFallbacks) {
     if (
       !enrichedUnpinned.some((k) => k.toLowerCase() === fb.toLowerCase()) &&
       !pinnedList.some((k) => k.toLowerCase() === fb.toLowerCase())
@@ -253,26 +335,22 @@ export function partitionArigatoSiteKeywords(input: GenerationInput): ArigatoSit
     aboutUnpinned = shuffledUnpinned.slice(0, neededUnpinnedForAbout);
     aboutKeywords = [...aboutPinned, ...aboutUnpinned].slice(0, 9);
   } else {
-    // If no pinned keywords:
-    const count = (unpinnedList.length >= 6 && unpinnedList.length <= 7) ? unpinnedList.length : 4;
+    const count = (compatibleUnpinned.length >= 6 && compatibleUnpinned.length <= 7) ? compatibleUnpinned.length : 4;
     aboutUnpinned = shuffledUnpinned.slice(0, count);
     aboutKeywords = [...aboutUnpinned];
   }
 
   // B. SEO META DESCRIPTION:
-  // User Rule: Exactly 4 keywords (up to 2 pinned + remaining unpinned to reach 4)
-  const shuffledPinned = [...pinnedList].sort(() => 0.5 - Math.random());
-  const descPinned = shuffledPinned.slice(0, Math.min(2, shuffledPinned.length));
-  const remainingForDesc = shuffledUnpinned.filter(
-    (k) => !descPinned.some((dp) => dp.toLowerCase() === k.toLowerCase())
-  );
-  const neededForDesc = Math.max(0, 4 - descPinned.length);
-  const descUnpinned = remainingForDesc.slice(0, neededForDesc);
-  const descKeywords = [...descPinned, ...descUnpinned].slice(0, 4);
+  // User Directive: Exactly 1 primary keyword! Dedicate the rest to describing what is in the image.
+  // Pick the #1 best, most relevant keyword
+  const primaryDescKw = pinnedList.length > 0 ? pinnedList[0] : shuffledUnpinned[0] || subjectFallbacks[0];
+  const descKeywords = [primaryDescKw];
+  const descPinned = pinnedList.length > 0 ? [pinnedList[0]] : [];
+  const descUnpinned = pinnedList.length === 0 ? [primaryDescKw] : [];
 
   // C. SEO KEYWORDS TAGS:
-  // User Rule: 10 tags (up to 4 pinned + remaining unpinned to reach 10)
-  const tagPinned = shuffledPinned.slice(0, Math.min(4, shuffledPinned.length));
+  // 10 tags: compatible pinned + unpinned
+  const tagPinned = pinnedList.slice(0, Math.min(4, pinnedList.length));
   const remainingForTags = shuffledUnpinned.filter(
     (k) => !tagPinned.some((tp) => tp.toLowerCase() === k.toLowerCase())
   );
@@ -319,16 +397,17 @@ export function analyzeVisualAndPrompt(input: GenerationInput): VisualAnalysis {
   const promptText = (input.prompt || '').toLowerCase();
   const fileName = (input.imageFileName || '').toLowerCase();
   const guidanceText = (input.extraGuidance || '').toLowerCase();
-  const keywordsText = (input.activeKeywords || []).concat(input.pinnedKeywords || []).join(' ').toLowerCase();
-  const allText = `${promptText} ${guidanceText} ${fileName} ${keywordsText}`;
+  const hintText = (input.visualHint || '').toLowerCase();
+  const visualContext = `${promptText} ${guidanceText} ${fileName} ${hintText}`.trim();
 
-  const coupleRegex = /\b(couple|two\s*people|boyfriend|girlfriend|husband|wife|together|pair|candid\s*closeness|romantic\s*duo|kissing|hugging|intimate)\b/i;
-  const femaleRegex = /\b(girl|female|woman|lady|she|her|polka|dress|saree|skirt|bangles|bride|queen|yearbook\s*girl)\b/i;
-  const maleRegex = /\b(boy|male|man|guy|him|he|groom|king|brother|gentleman)\b/i;
-  const is1980s = /\b(1980|1986|80s|1980s|retro|vintage|film\s*grain|disposable|polaroid|analog)\b/i.test(allText);
+  const coupleRegex = /\b(couple|couples|two\s*people|boyfriend|girlfriend|husband|wife|together|pair|candid\s*closeness|romantic\s*duo|kissing|hugging|intimate)\b/i;
+  const femaleRegex = /\b(girl|female|woman|lady|she|her|polka|dress|saree|skirt|bangles|bride|queen|yearbook\s*girl|spider-?girl)\b/i;
+  const maleRegex = /(?<!spider-?|super-?|bat-?|iron-?)\b(boy|male|man|guy|him|he|groom|king|brother|gentleman)\b/i;
+  const isSpiderman = /spider-?man|spidey|peter\s*parker|spider-?woman|spider-?girl|cosplay/i.test(visualContext);
+  const is1980s = /\b(1980|1986|80s|1980s|retro|vintage|film\s*grain|disposable|polaroid|analog)\b/i.test(visualContext);
 
   // Subject focus determination (respect explicit override if set)
-  let subjectType: 'solo_female' | 'solo_male' | 'couple' | 'portrait' = 'couple';
+  let subjectType: 'solo_female' | 'solo_male' | 'couple' | 'portrait' = 'solo_female';
 
   if (input.subjectFocus && input.subjectFocus !== 'auto') {
     subjectType = input.subjectFocus === 'portrait' ? 'solo_female' : input.subjectFocus;
@@ -342,63 +421,80 @@ export function analyzeVisualAndPrompt(input: GenerationInput): VisualAnalysis {
       subjectType = 'couple';
     } else if (coupleRegex.test(promptText)) {
       subjectType = 'couple';
+    } else if (isSpiderman) {
+      subjectType = maleRegex.test(visualContext) && !femaleRegex.test(visualContext) ? 'solo_male' : 'solo_female';
     } else if (femaleRegex.test(promptText + ' ' + fileName)) {
       subjectType = 'solo_female';
     } else if (maleRegex.test(promptText + ' ' + fileName)) {
       subjectType = 'solo_male';
-    } else if (is1980s && (femaleRegex.test(keywordsText) || /photo-trend|trend-6|trend/i.test(fileName))) {
-      subjectType = 'solo_female';
     } else if (coupleRegex.test(fileName)) {
       subjectType = 'couple';
     } else {
-      subjectType = coupleRegex.test(keywordsText) ? 'couple' : 'solo_female';
+      // Safe visual default: solo portrait (never assume couple from global keywords!)
+      subjectType = 'solo_female';
     }
   }
 
   // Scene determination
   let sceneTitle = 'a spontaneous, authentic portrait';
-  if (/3-frame|three.*frame|strip|collage|series/i.test(allText)) {
+  if (/3-frame|three.*frame|strip|collage|series/i.test(visualContext)) {
     sceneTitle = subjectType === 'couple' ? 'a super cute vertical 3-frame couple selfie series' : 'a super cute vertical 3-frame selfie series';
-  } else if (/mirror|selfie|holding\s*phone/i.test(allText) || /trend-6|photo-trend/i.test(fileName)) {
+  } else if (/mirror|selfie|holding\s*phone/i.test(visualContext) || /trend-6|photo-trend/i.test(fileName)) {
     sceneTitle = is1980s ? 'a nostalgic 1980s retro mirror selfie' : 'a spontaneous candid mirror selfie';
-  } else if (/elevator|lift/i.test(allText)) {
+  } else if (/elevator|lift/i.test(visualContext)) {
     sceneTitle = 'a spontaneous elevator mirror selfie';
-  } else if (/cafe|coffee/i.test(allText)) {
+  } else if (/cafe|coffee/i.test(visualContext)) {
     sceneTitle = 'a cozy coffee date portrait';
-  } else if (/balcony|rooftop/i.test(allText)) {
+  } else if (/balcony|rooftop/i.test(visualContext)) {
     sceneTitle = 'a relaxed open balcony moment';
-  } else if (/street|city/i.test(allText)) {
+  } else if (/street|city/i.test(visualContext)) {
     sceneTitle = 'a candid street style portrait';
   } else if (is1980s) {
     sceneTitle = 'a nostalgic 1980s vintage portrait';
+  } else if (isSpiderman) {
+    sceneTitle = 'a spontaneous Spider-Man suit mirror selfie in a marble hallway';
   } else if (subjectType === 'couple') {
     sceneTitle = 'a spontaneous, romantic candid couple portrait';
   }
 
   // Outfit, Aesthetic, and Action determination
-  let outfitDesc = 'casual everyday outfits with natural fabric creases';
+  let outfitDesc = subjectType === 'solo_female'
+    ? 'a stylish casual outfit with natural fabric drape'
+    : subjectType === 'solo_male'
+    ? 'a stylish casual outfit with natural fabric folds'
+    : 'casual everyday outfits with natural fabric creases';
   let aestheticDesc = 'soft natural ambient lighting, subtle exposure variations, and mobile camera sensor softness';
-  let subjectActionDesc = 'two people sharing candid closeness, genuine eye contact, and playful chemistry';
-  let photoGoal = 'making sweet couple memories';
+  let subjectActionDesc = subjectType === 'solo_female'
+    ? 'a stylish young woman captured in a spontaneous, unposed moment with a natural, confident expression'
+    : subjectType === 'solo_male'
+    ? 'a stylish young man captured in a spontaneous, unposed moment with confident, natural energy'
+    : 'two people sharing candid closeness, genuine eye contact, and playful chemistry';
+  let photoGoal = subjectType === 'couple' ? 'making sweet couple memories' : 'creating your own viral aesthetic portraits';
 
-  const hasMaroonHint = input.visualHint?.includes('maroon') || /maroon|burgundy|wine/i.test(allText);
-  const hasGlassesHint = input.visualHint?.includes('sunglasses') || /glasses|sunglasses|shades/i.test(allText);
+  const hasMaroonHint = input.visualHint?.includes('maroon') || /maroon|burgundy|wine/i.test(visualContext);
+  const hasGlassesHint = input.visualHint?.includes('sunglasses') || /glasses|sunglasses|shades/i.test(visualContext);
 
-  if (hasMaroonHint) {
+  if (isSpiderman) {
+    outfitDesc = 'an authentic red and blue Spider-Man suit with web pattern detailing, black spider emblem, grey leggings, and a matching Spider-Man mask in hand';
+    aestheticDesc = 'bright natural indoor lighting with marble floor reflections, realistic fabric texture, and authentic smartphone camera sharpness';
+    sceneTitle = 'a spontaneous Spider-Man suit mirror selfie in a marble hallway';
+    subjectActionDesc = 'a young woman in a Spider-Man suit holding a Spider-Man mask and taking a confident mirror selfie';
+    photoGoal = 'creating your own viral cosplay portraits';
+  } else if (hasMaroonHint) {
     outfitDesc = 'a rich deep maroon satin plunge shirt paired with contrasting tailored off-white trousers, alongside a glittering sequined maroon halter dress';
     aestheticDesc = 'warm ambient indoor lighting highlighting satin sheen and sequin reflections with authentic mobile camera sensor realism';
     sceneTitle = 'an ultra-stylish, confident couple portrait in black sunglasses';
     subjectActionDesc = 'a confident couple posing playfully with black rectangular sunglasses, natural smirks, and authentic chemistry';
     photoGoal = 'creating your own viral aesthetic portraits';
-  } else if (/polka|dot/i.test(allText) || (is1980s && subjectType === 'solo_female')) {
+  } else if (/polka|dot/i.test(visualContext) || (is1980s && subjectType === 'solo_female')) {
     outfitDesc = 'a vintage cream puff-sleeve dress with red polka dots and a classic red waist belt';
-  } else if (/saree|sari/i.test(allText)) {
+  } else if (/saree|sari/i.test(visualContext)) {
     outfitDesc = 'an elegant traditional saree with authentic fabric drape';
-  } else if (/kurta/i.test(allText)) {
+  } else if (/kurta/i.test(visualContext)) {
     outfitDesc = 'authentic textured kurtas with realistic fabric folds';
-  } else if (/naruto|graphic|tee|t-shirt/i.test(allText)) {
+  } else if (/naruto|graphic|tee|t-shirt/i.test(visualContext)) {
     outfitDesc = 'casual everyday tees with relaxed cotton textures';
-  } else if (/dress|crochet/i.test(allText)) {
+  } else if (/dress|crochet/i.test(visualContext)) {
     outfitDesc = 'a charming casual dress with lovely everyday styling';
   }
 
@@ -406,7 +502,7 @@ export function analyzeVisualAndPrompt(input: GenerationInput): VisualAnalysis {
     sceneTitle += ' with black sunglasses';
   }
 
-  if (!hasMaroonHint) {
+  if (!hasMaroonHint && !isSpiderman) {
     if (is1980s) {
       aestheticDesc = 'authentic 1980s analog film grain, an orange date timestamp ("JUL 27 1986"), and warm ambient lighting';
     }
@@ -471,21 +567,33 @@ export function generateSmartAboutPrompt(
   const v = visual || analyzeVisualAndPrompt(input);
 
   const cleanSceneTitle = v.sceneTitle.replace(/^(?:a|an)\s+/i, '');
+
+  const fb0 = v.subjectType === 'solo_female' ? 'gemini girl prompt' : v.subjectType === 'solo_male' ? 'portrait prompt' : 'gemini couple prompt';
+  const fb1 = v.subjectType === 'solo_female' ? 'trending prompt girls' : v.subjectType === 'solo_male' ? 'trending prompt boys' : 'candid couple photo';
+  const fb2 = v.subjectType === 'solo_female' ? 'aesthetic girl portrait' : v.subjectType === 'solo_male' ? 'aesthetic portrait for men' : 'aesthetic couple portrait';
+  const fb3 = v.subjectType === 'solo_female' ? 'solo girl photo' : v.subjectType === 'solo_male' ? 'solo boy photo' : 'couple aesthetic';
+  const fb4 = v.subjectType === 'solo_female' ? 'candid photo poses' : v.subjectType === 'solo_male' ? 'men photography ideas' : 'couple photography ideas';
+  const fb5 = v.subjectType === 'solo_female' ? 'aesthetic photography' : v.subjectType === 'solo_male' ? 'smartphone portrait' : 'trending prompt boys';
+  const fb6 = v.subjectType === 'solo_female' ? 'viral portrait prompt' : v.subjectType === 'solo_male' ? 'viral portrait prompt' : 'viral couple prompt';
+  const fb7 = v.subjectType === 'solo_female' ? 'aesthetic mirror selfie' : v.subjectType === 'solo_male' ? 'candid photo poses' : 'romantic couple prompt';
+  const fb8 = v.subjectType === 'solo_female' ? 'natural light portrait' : v.subjectType === 'solo_male' ? 'gemini photo prompt' : 'couple photo ideas';
+  const fb9 = v.subjectType === 'solo_female' ? 'smartphone portrait' : v.subjectType === 'solo_male' ? 'smartphone portrait' : 'smartphone couple photo';
+
   const subjectIntro = v.subjectType === 'couple'
-    ? `This prompt brings an ultra-stylish, authentic ${cleanSceneTitle} to life, capturing candid closeness and genuine chemistry for ${kws[0] || 'gemini couple prompt'} and ${kws[1] || 'trending prompt girls'}.`
+    ? `This prompt brings an ultra-stylish, authentic ${cleanSceneTitle} to life, capturing candid closeness and genuine chemistry for ${kws[0] || fb0} and ${kws[1] || fb1}.`
     : v.subjectType === 'solo_female'
-    ? `This prompt brings an authentic, spontaneous portrait of a stylish young woman to life, capturing natural charm and unposed confidence for ${kws[0] || 'gemini girl prompt'} and ${kws[1] || 'trending prompt girls'}.`
-    : `This prompt brings a compelling, authentic portrait of a stylish young man to life, capturing natural presence and charisma for ${kws[0] || 'portrait prompt'} and ${kws[1] || 'trending prompt boys'}.`;
+    ? `This prompt brings an authentic, spontaneous portrait of a stylish young woman to life, capturing natural charm and unposed confidence for ${kws[0] || fb0} and ${kws[1] || fb1}.`
+    : `This prompt brings a compelling, authentic portrait of a stylish young man to life, capturing natural presence and charisma for ${kws[0] || fb0} and ${kws[1] || fb1}.`;
 
   const s1 = `If you generate this prompt, you are going to have an absolute blast with the results! ${subjectIntro}`;
 
-  const s2 = `${v.subjectType === 'solo_female' ? 'Her' : v.subjectType === 'solo_male' ? 'His' : 'Their'} styling stays effortlessly chic and distinctive, featuring ${v.outfitDesc}, tailored seamlessly for ${kws[2] || 'aesthetic couple portrait'}, ${kws[3] || 'couple aesthetic'}, and ${kws[4] || 'couple photography ideas'}.`;
+  const s2 = `${v.subjectType === 'solo_female' ? 'Her' : v.subjectType === 'solo_male' ? 'His' : 'Their'} styling stays effortlessly chic and distinctive, featuring ${v.outfitDesc}, tailored seamlessly for ${kws[2] || fb2}, ${kws[3] || fb3}, and ${kws[4] || fb4}.`;
 
-  const s3 = `The surrounding space showcases ${v.aestheticDesc}, adding rich ambient atmosphere, balanced highlights, and gentle shadows that elevate ${kws[5] || 'trending prompt boys'} and ${kws[6] || 'viral couple prompt'}.`;
+  const s3 = `The surrounding space showcases ${v.aestheticDesc}, adding rich ambient atmosphere, balanced highlights, and gentle shadows that elevate ${kws[5] || fb5} and ${kws[6] || fb6}.`;
 
-  const s4 = `Authentic handheld smartphone details—including real skin texture, visible pores, natural smile lines, hair flyaways, and fabric creases—preserve complete camera realism with strictly zero artificial AI smoothing or plastic beauty filters, ideal for ${kws[7] || 'romantic couple prompt'} and ${kws[8] || 'candid photo poses'}.`;
+  const s4 = `Authentic handheld smartphone details—including real skin texture, visible pores, natural smile lines, hair flyaways, and fabric creases—preserve complete camera realism with strictly zero artificial AI smoothing or plastic beauty filters, ideal for ${kws[7] || fb7} and ${kws[8] || fb8}.`;
 
-  const s5 = `Ready to create your own? Just copy the prompt above, paste it into your favorite AI image generator, and have fun creating viral photos for ${kws[9] || 'smartphone couple photo'}!`;
+  const s5 = `Ready to create your own? Just copy the prompt above, paste it into your favorite AI image generator, and have fun creating viral photos for ${kws[9] || fb9}!`;
 
   const fullPrompt = `${s1} ${s2} ${s3} ${s4} ${s5}`;
   return enforceWordLimit(fullPrompt, 199, 151);
@@ -493,7 +601,7 @@ export function generateSmartAboutPrompt(
 
 /**
  * Smart synthesis generator for "SEO Meta Description" (Strictly <= 160 chars)
- * Weaves 4 keywords into a natural SERP sentence.
+ * Weaves EXACTLY 1 primary keyword + dedicated visual description.
  */
 export function generateSmartSeoDescription(
   input: GenerationInput,
@@ -501,29 +609,22 @@ export function generateSmartSeoDescription(
   visual?: VisualAnalysis
 ): string {
   const parts = partition || partitionArigatoSiteKeywords(input);
-  const [k1, k2, k3, k4] = parts.descKeywords;
+  const primaryKw = parts.descKeywords[0] || (parts.tagKeywords[0] || 'AI photo prompt');
   const v = visual || analyzeVisualAndPrompt(input);
 
-  const extraPart = k4 ? ` and ${k4}` : '';
   let desc = '';
   if (v.subjectType === 'solo_female') {
     desc = v.is1980s
-      ? `1980s retro prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with authentic styling and smartphone realism.`
-      : `Girl AI prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with candid smartphone realism.`;
+      ? `Recreate this 1980s retro mirror selfie with ${primaryKw}, featuring ${v.outfitDesc} and authentic vintage camera grain.`
+      : `Create this authentic portrait with ${primaryKw}, featuring ${v.outfitDesc} and natural smartphone realism.`;
   } else if (v.subjectType === 'solo_male') {
-    desc = `Portrait AI prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with authentic styling and smartphone realism.`;
+    desc = `Create this stylish portrait with ${primaryKw}, featuring ${v.outfitDesc} and authentic smartphone realism.`;
   } else {
-    desc = `Realistic couple AI prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with candid smartphone realism.`;
+    desc = `Capture an authentic romantic portrait with ${primaryKw}, featuring ${v.outfitDesc} and candid smartphone realism.`;
   }
 
   if (desc.length > 160) {
-    desc = `AI prompt for ${k1} and ${k2}, featuring ${k3}${extraPart} with smartphone realism.`;
-  }
-  if (desc.length > 160) {
-    desc = `AI prompt for ${k1}, ${k2}, and ${k3} with authentic smartphone realism.`;
-  }
-  if (desc.length > 160) {
-    desc = `AI prompt for ${k1} & ${k2} with ${k3}${extraPart}.`;
+    desc = `Create this authentic portrait with ${primaryKw}, featuring natural styling and smartphone realism.`;
   }
   return enforceSentenceCharLimit(desc, 160);
 }
@@ -1353,12 +1454,16 @@ TONE & WRITING STYLE:
 - STRICT NO-AI-SMOOTHING RULE: Emphasize genuine skin pores, authentic skin texture, realistic shadows, hair flyaways, and natural fabric creases. Zero plastic skin or CGI smoothing!
 - No plagiarism: Write with 100% original, fresh observational energy.
 
-STRICT SUBJECT ACCURACY DIRECTIVE:
+STRICT SUBJECT ACCURACY & KEYWORD RELEVANCE DIRECTIVE (ZERO SUBJECT HALLUCINATION):
+1. VISUAL PIXEL INSPECTION FIRST: Look at the actual image pixels before using any keywords.
 ${v.subjectType === 'solo_female'
-  ? '- The visual portrays ONE SINGLE WOMAN/GIRL. DO NOT describe "two people", "couple closeness", or "romance". Focus on HER authentic styling and portrait.'
+  ? `- The visual portrays ONE SINGLE WOMAN/GIRL.
+  - STRICTLY FORBIDDEN: NEVER include words like "couple", "couples", "boyfriend", "romantic duo", "two people", "couple aesthetic", "couple portrait", "couple photo", "couple prompt", "couple photo ideas", "smartphone couple photo" in ANY field!
+  - If any candidate keywords from the pool contain couple terms, DISCARD THEM IMMEDIATELY! Do NOT weave them. Substitute with accurate visual descriptors (e.g. "spiderman girl prompt", "trending prompt girls", "aesthetic mirror selfie").`
   : v.subjectType === 'solo_male'
-  ? '- The visual portrays ONE SINGLE MAN/BOY. DO NOT describe "two people", "couple closeness", or "romance". Focus on HIS authentic portrait.'
-  : '- The visual portrays a couple. Describe their candid interaction, body alignment, and authentic chemistry.'}
+  ? `- The visual portrays ONE SINGLE MAN/BOY.
+  - STRICTLY FORBIDDEN: NEVER include words like "couple", "couples", "girlfriend", "romantic duo", "two people", "couple aesthetic", "couple portrait" in ANY field! Focus on HIS solo portrait.`
+  : `- The visual portrays a couple. Describe their candid interaction, body alignment, and authentic chemistry.`}
 
 ENVIRONMENT NOTICE:
 This is for "Arigato Site SEO" (NOT Pinterest). Do NOT generate Pinterest board recommendations, Pinterest pin titles, or Pinterest hashtags.
@@ -1372,8 +1477,8 @@ Write in an engaging, humanized creator tone with high visual fidelity and SEO k
 
 2. VISUAL STYLING, OUTFITS & ENVIRONMENT (Exact Details + Middle Keywords):
    - Carefully inspect the image pixels and describe exact clothing cuts, fabrics, colors, posture, and setting:
-     * Detail the garments, colors, specific fabrics (e.g. satin sheen, glittering sequins, sheer mesh corset panels, tailored cloth), necklines (plunging V-neck, halter), and accessories (black sunglasses, jewelry).
-     * Detail the environment (e.g. interior architecture, marble walls with vertical gold/brass trim lines, ambient lighting).
+     * Detail the garments, colors, specific fabrics (e.g. Spider-Man suit/cosplay top, satin sheen, jacket, sheer mesh, tailored trousers), necklines, and accessories (Spider-Man mask in hand, sunglasses, jewelry, backpack).
+     * Detail the environment (e.g. marble hallway with reflective floors, interior walls, ambient lighting).
    - Naturally weave the next 4-5 target keywords into fluent, complete sentences (NO comma lists).
 
 3. CAMERA & REALISM (Smartphone Imperfections + Zero AI Smoothing):
@@ -1396,17 +1501,18 @@ CRITICAL LENGTH & COUNTING RULES (STRICT COMPLIANCE REQUIRED):
      * Total Assigned Target Keywords (${partition.aboutKeywords.length}): ${partition.aboutKeywords.join(', ')}
    - ANTI-KEYWORD-STUFFING: ABSOLUTELY NEVER output a comma-separated list of keywords. Every keyword MUST be woven naturally into a sentence.
 
-2. "seoDescription" (EXACTLY 4 MANDATORY KEYWORDS):
-   - STRICT CONSTRAINT: MUST BE STRICTLY UNDER 160 CHARACTERS (target 140 to 158 characters).
-   - Naturally weave these 4 keywords into a compelling Google SERP meta description sentence:
-     * Pinned Keywords: ${partition.descPinned.length > 0 ? partition.descPinned.join(', ') : 'None'}
-     * Unpinned Keywords: ${partition.descUnpinned.join(', ')}
-     * Total 4 Target Keywords: ${partition.descKeywords.join(', ')}
+2. "seoDescription" (EXACTLY 1 PRIMARY KEYWORD + VIVID IMAGE DESCRIPTION):
+   - STRICT CONSTRAINT: 130 to 160 characters (target 140 to 158 characters, NEVER exceed 160 characters!).
+   - EXACTLY ONE (1) KEYWORD: Pick ONLY ONE single best-matching keyword: "${partition.descKeywords[0] || 'AI photo prompt'}".
+   - DEDICATE ALL REMAINING CHARACTERS TO ACCURATELY DESCRIBING WHAT IS IN THE IMAGE:
+     Clearly mention the subject's outfit, character styling (e.g. Spider-Man suit, dress, casual wear), pose, accessories (e.g. mask in hand, phone, sunglasses), setting (e.g. marble hallway), and smartphone realism.
+   - STRICT NO-STUFFING RULE: Do NOT list 3 or 4 keywords separated by commas or periods! Just ONE keyword seamlessly woven into an engaging, natural SERP sentence.
 
 3. "keywords" (EXACTLY 10 KEYWORD TAGS):
-   - Return a JSON array of EXACTLY 10 keyword tags:
+   - Return a JSON array of EXACTLY 10 keyword tags matching the visual subject:
      * Keywords 1-3: Specifically describe the visual artwork concept (garments, pose, accessories, scene).
-     * Keywords 4-10: Broader target keywords: [${partition.tagKeywords.slice(0, 7).map((k) => `"${k}"`).join(', ')}].
+     * Keywords 4-10: Broader compatible target keywords: [${partition.tagKeywords.slice(0, 7).map((k) => `"${k}"`).join(', ')}].
+   - If solo subject, STRICTLY ZERO couple tags!
 
 4. "siteMetaTitle":
    - A concise SERP title under 65 chars (e.g. "${getSiteMetaTitle(v)}").
@@ -1418,10 +1524,12 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with keys: "aboutPrompt", "seoDes
   const visualInspectionPrompt = input.imageDataUrl
     ? `VISUAL INSPECTION DIRECTIVE (PIXEL ANALYSIS REQUIRED):
 An image is attached to this request. INSPECT THE ACTUAL PIXELS OF THIS IMAGE CAREFULLY AND REVERSE-PROMPT EXACTLY WHAT YOU SEE:
-- Subject & Pose: Who is present, their exact posture, hand placement (e.g. leaning forward, pulling down sunglasses), facial expression, and direct eye contact.
-- Outfits & Fabrics: Describe the exact clothing, specific colors (e.g. rich maroon/burgundy/wine, off-white/cream, black), fabrics (glossy satin/silk sheen, glittering sequins, sheer mesh/corset panels, tailored trousers), necklines (plunging V-neck, halter), and accessories (black rectangular sunglasses, bracelets).
-- Setting & Environment: Modern luxury interior, neutral wall panels with vertical gold/brass trim lines, polished floor, and warm ambient hallway lighting.
-- Capture this authentic visual reality faithfully in your reverse-prompt description.`
+- Subject & Count: Clearly identify who is present (e.g. one solo girl/woman, one solo boy/man, or two people). Do not invent extra people!
+- Outfits & Fabrics: Describe the exact clothing (e.g. Spider-Man suit/compression top with spider emblem, grey leggings, sneakers, dress, saree, jacket) with specific colors and fabric textures.
+- Accessories & Props: Note what they are holding or wearing (e.g. Spider-Man mask in hand, phone, backpack, jewelry, eyewear).
+- Pose & Expression: Posture (e.g. top-down angle, mirror selfie, standing in hallway, direct confident eye contact, subtle smile).
+- Setting & Lighting: Environment details (e.g. marble floor, bright hallway walls, ambient natural light).
+- Faithfully capture this authentic visual reality in your descriptions.`
     : (input.visualHint ? `Visual Hints: ${input.visualHint}\n${v.reversePromptText}` : v.reversePromptText);
 
   const userTextPrompt = `Create the authoritative Arigato Site SEO package for:
@@ -1431,13 +1539,13 @@ ${visualInspectionPrompt}
 
 REQUIRED 4-PART "aboutPrompt" FLOW (weave assigned keywords in fluent sentences, 151-199 words):
 1. Exciting Hook: "If you generate this prompt, you're going to love the results! In this prompt, you get..." + keywords.
-2. Visual Styling & Environment: exact garments, fabrics, colors, sunglasses, luxury marble interior + keywords.
+2. Visual Styling & Environment: exact garments, fabrics, colors, accessories, setting + keywords.
 3. Realistic Photography: smartphone 9:16 framing, authentic skin pores, smile lines, zero AI smoothing + keywords.
 4. Concluding CTA: "Ready to create your own? Just copy the prompt above, paste it into your favorite AI image generator, and have fun creating viral photos!" + keyword.
 
 MANDATORY KEYWORD ASSIGNMENTS:
 - About This Prompt (${partition.aboutKeywords.length} keywords in fluent sentences, 151-199 words): ${partition.aboutKeywords.join(', ')}
-- SEO Meta Description (weave all 4 in sentence, max 160 chars): ${partition.descKeywords.join(', ')}
+- SEO Meta Description (EXACTLY 1 KEYWORD: "${partition.descKeywords[0] || 'AI photo prompt'}" + dedicated visual description, strictly <= 160 chars)
 - Exact 10 Tags: ${partition.tagKeywords.slice(0, 10).join(', ')}`;
 
   const buildPayload = (includeImage: boolean) => {
@@ -1558,6 +1666,39 @@ MANDATORY KEYWORD ASSIGNMENTS:
     }
   }
   keywords = keywords.slice(0, 10);
+
+  // Subject-Aware Post-Processing Sanitizer:
+  // If the visual is a solo subject, guarantee zero couple words in aboutPrompt, seoDescription, or tags!
+  if (v.subjectType === 'solo_female' || v.subjectType === 'solo_male' || v.subjectType === 'portrait') {
+    const sanitizeCoupleText = (text: string) => {
+      return text
+        .replace(/\b(?:an?\s+)?effortless\s+couple\s+aesthetic\s+vibe\b/gi, 'an effortless aesthetic portrait vibe')
+        .replace(/\baesthetic\s+couple\s+portrait\b/gi, v.subjectType === 'solo_female' ? 'aesthetic girl portrait' : 'aesthetic portrait')
+        .replace(/\brealistic\s+couple\s+prompt\s+for\s+gemini\s+ai\b/gi, v.subjectType === 'solo_female' ? 'realistic girl prompt for gemini ai' : 'realistic portrait prompt for gemini ai')
+        .replace(/\brealistic\s+couple\s+prompt\b/gi, v.subjectType === 'solo_female' ? 'realistic girl prompt' : 'realistic portrait prompt')
+        .replace(/\bgemini\s+couple\s+prompt\b/gi, v.subjectType === 'solo_female' ? 'gemini girl prompt' : 'gemini portrait prompt')
+        .replace(/\bcouple\s+photography\s+ideas\b/gi, 'creative photography ideas')
+        .replace(/\bcouple\s+photo\s+ideas\b/gi, 'creative photo ideas')
+        .replace(/\bsmartphone\s+couple\s+photo\b/gi, 'smartphone portrait')
+        .replace(/\bcouple\s+aesthetic\b/gi, 'candid aesthetic')
+        .replace(/\bcouple\s+selfie\b/gi, 'mirror selfie')
+        .replace(/\bviral\s+couple\s+prompt\b/gi, 'viral portrait prompt')
+        .replace(/\bcouple\s+prompt\b/gi, 'portrait prompt');
+    };
+
+    aboutPrompt = sanitizeCoupleText(aboutPrompt);
+    seoDescription = sanitizeCoupleText(seoDescription);
+    keywords = keywords.filter((k) => isKeywordCompatibleWithSubject(k, v.subjectType));
+    for (const kw of partition.tagKeywords) {
+      if (keywords.length >= 10) break;
+      if (!keywords.map((k) => k.toLowerCase()).includes(kw.toLowerCase())) {
+        keywords.push(kw);
+      }
+    }
+    keywords = keywords.slice(0, 10);
+  }
+
+  seoDescription = enforceSentenceCharLimit(seoDescription, 160);
 
   const siteMetaTitle =
     parsed.siteMetaTitle ||

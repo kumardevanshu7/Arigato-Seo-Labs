@@ -566,7 +566,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                 {(() => {
                   const descList =
                     result.descKeywords ||
-                    (result.keywordsMatched ? result.keywordsMatched.slice(0, 4) : []);
+                    (result.keywordsMatched ? result.keywordsMatched.slice(0, 1) : []);
                   const pCount = descList.filter((k) =>
                     pinnedKeywords.some((pk) => pk.toLowerCase() === k.toLowerCase())
                   ).length;
@@ -578,7 +578,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
                         <span className="text-[11px] font-mono text-[#94a3b8] flex items-center gap-1.5">
                           <Tag className="w-3.5 h-3.5 text-[#22c55e]" />
                           <span>
-                            Used Keywords ({descList.length}
+                            Used Keyword{descList.length === 1 ? '' : 's'} ({descList.length}
                             {pCount > 0 ? ` • ${pCount} Pin • ${uCount} Unpin` : ''})
                           </span>
                         </span>

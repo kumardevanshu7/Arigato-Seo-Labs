@@ -82,11 +82,18 @@ export function selectFewShotExamples(
       if (ref.includes('sunlight') || ref.includes('grass') || ref.includes('golden')) score += 8;
     }
 
-    // Solo gender matching
-    if (subjectType === 'solo_female') {
-      if (ref.includes('mirror selfie') || ref.includes('portrait')) score += 3;
+    // Solo gender & subject matching with negative penalty for mismatch
+    const isCoupleRef = ref.includes('couple') || ref.includes('kiss') || concept.includes('boy and girl') || concept.includes('two');
+    if (subjectType === 'solo_female' || subjectType === 'portrait') {
+      if (ref.includes('mirror selfie') || ex.id === 'EX18' || ex.id === 'EX13') score += 15;
+      if (ref.includes('portrait')) score += 8;
+      if (isCoupleRef) score -= 25;
     } else if (subjectType === 'solo_male') {
-      if (ref.includes('male') || ref.includes('enfield') || ref.includes('party portrait')) score += 6;
+      if (ref.includes('male') || ref.includes('enfield') || ex.id === 'EX19' || ex.id === 'EX04') score += 15;
+      if (isCoupleRef) score -= 25;
+    } else if (subjectType === 'couple') {
+      if (isCoupleRef) score += 10;
+      if (ex.id === 'EX19') score -= 15;
     }
 
     // General token overlap
@@ -103,8 +110,12 @@ export function selectFewShotExamples(
   // Sort descending by score
   scored.sort((a, b) => b.score - a.score);
 
-  // If no specific match, default to a balanced set of top diverse examples (EX01 collage, EX02 intimate, EX03 cafe)
-  const defaultIds = ['EX01', 'EX02', 'EX03', 'EX19'];
+  // Subject-appropriate default fallbacks
+  const defaultIds = subjectType === 'solo_female' || subjectType === 'portrait'
+    ? ['EX18', 'EX13', 'EX04']
+    : subjectType === 'solo_male'
+    ? ['EX19', 'EX04', 'EX18']
+    : ['EX01', 'EX02', 'EX03'];
   const topMatches = scored.filter((s) => s.score > 2).map((s) => s.ex);
 
   const selected: FrameworkExample[] = [];
@@ -176,8 +187,8 @@ STRICT LENGTH & COUNTING RULES:
    - NEVER exceed 199 words.
    - Weave the pre-assigned target keywords naturally into fluent sentences across the 8 dimensions.
 2. "seoDescription":
-   - STRICT LIMIT: 140 to 160 characters (Never exceed 160 characters).
-   - A compelling, click-worthy Google SERP meta description sentence highlighting the core prompt idea.
+   - STRICT LIMIT: 130 to 160 characters (Never exceed 160 characters).
+   - EXACTLY 1 PRIMARY KEYWORD: Weave only ONE best-matching target keyword, and dedicate all remaining characters to vividly describing the visual subject and scene. Zero keyword comma stuffing!
 3. "keywords":
    - Exactly 9 to 10 keyword tags.
    - Keywords 1-3 describe the specific visual artwork/concept.
