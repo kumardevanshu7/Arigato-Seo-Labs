@@ -1,5 +1,6 @@
 import type { GenerationInput, PinterestSeoResult, PinterestVariation, ArigatoSiteSeoResult, ApiConfig, GrabTextResult } from '../types/seo';
 import { getStoredApiConfig } from '../utils/storage';
+import { buildArigatoFrameworkPromptSection } from '../data/promptFramework';
 import Tesseract from 'tesseract.js';
 
 // Helper to count words accurately
@@ -1212,9 +1213,17 @@ async function executeCustomSiteApi(
   const headers = buildAuthHeaders(config);
   const endpoint = resolveApiUrl(config);
 
-  const systemContent = `You are a friendly, creative AI prompt curator and blogger at Arigato Labs.
-Your task is to analyze the attached visual artwork and reverse-prompt it in simple, romantic, candid English to write an engaging "About this prompt" guide, a click-worthy Google SERP meta description, and 9 SEO tags.
+  const frameworkSection = buildArigatoFrameworkPromptSection(
+    `${input.prompt || ''} ${input.imageFileName || ''} ${input.extraGuidance || ''}`,
+    v.subjectType
+  );
 
+  const systemContent = `You are an expert AI prompt curator, reverse prompt engineer, and SEO architect at Arigato Labs.
+Your task is to analyze the user's visual artwork and convert it into the official Arigato Site SEO metadata package according to our strict production framework.
+
+${frameworkSection}
+
+VISUAL CONTEXT & REVERSE PROMPT ANALYSIS:
 ${v.reversePromptText}
 ${input.extraGuidance?.trim() ? `
 USER'S CUSTOM EXTRA GUIDANCE / SYSTEM DIRECTIVES:
@@ -1227,6 +1236,7 @@ CRITICAL: DO NOT literally quote or print the user's raw directives in the copy 
 ` : ''}
 TONE & WRITING STYLE:
 - Write in simple, warm, romantic/candid, conversational human English (like an enthusiastic creator sharing an awesome prompt with friends on a blog).
+- Follow the 8-dimension content blueprint and reference examples above.
 - DO NOT sound like a robotic system specification or legal contract. NEVER use stiff phrases like "This creative photography specification...", "Strict facial identity preservation is maintained as the highest priority...", etc.
 - No plagiarism: Write with 100% original, fresh human energy.
 
@@ -1265,8 +1275,8 @@ We have pre-selected the exact keywords you must use for each section:
      * 1 Unpinned Keyword: ${partition.descUnpinned.join(', ')}
      * Total 3 Target Keywords: ${partition.descKeywords.join(', ')}
 
-3. "keywords" (EXACTLY 9 KEYWORD TAGS):
-   - Return an array of EXACTLY 9 keyword tags consisting of:
+3. "keywords" (EXACTLY 9 TO 10 KEYWORD TAGS):
+   - Return an array of EXACTLY 9 to 10 keyword tags consisting of:
      [${partition.tagKeywords.map((k) => `"${k}"`).join(', ')}]
 
 4. "siteMetaTitle":
@@ -1363,6 +1373,7 @@ REQUIRED KEYWORD ASSIGNMENTS:
   // Flexible key extraction
   let rawAbout = parsed.aboutPrompt || parsed.about_prompt || parsed.about_this_prompt || parsed.aboutThisPrompt || parsed.prompt || parsed.about || '';
   let rawSeoDesc = parsed.seoDescription || parsed.seo_description || parsed.meta_description || parsed.metaDescription || parsed.description || '';
+  let rawKeywords = parsed.keywords || parsed.seo_keywords || parsed.seoKeywords || parsed.tags || [];
 
   const smartBackup = {
     aboutPrompt: generateSmartAboutPrompt(input, partition, v),
@@ -1371,14 +1382,13 @@ REQUIRED KEYWORD ASSIGNMENTS:
   };
 
   // Fail-safe check for aboutPrompt:
-  // If the model echoed the raw input prompt verbatim or is too short (< 40 words), or didn't weave the keywords:
-  let aboutPrompt = rawAbout && typeof rawAbout === 'string' && countWords(rawAbout) >= 40
+  let aboutPrompt = rawAbout && typeof rawAbout === 'string' && countWords(rawAbout) >= 50
     ? enforceWordLimit(rawAbout, 199)
     : smartBackup.aboutPrompt;
 
-  // Verify that aboutPrompt contains at least 5 of the target keywords; if not, use smartBackup
+  // Verify keyword inclusion; if model produced almost no overlap and is short, fallback to smartBackup
   const matchedKws = partition.aboutKeywords.filter(k => aboutPrompt.toLowerCase().includes(k.toLowerCase()));
-  if (matchedKws.length < 5) {
+  if (matchedKws.length < 3 && countWords(aboutPrompt) < 130) {
     aboutPrompt = smartBackup.aboutPrompt;
   }
   aboutPrompt = enforceWordLimit(aboutPrompt, 199);
@@ -1389,8 +1399,18 @@ REQUIRED KEYWORD ASSIGNMENTS:
     : smartBackup.seoDescription;
 
   // Fail-safe check for keywords:
-  // Strictly return the 9 tags (4 pinned + 5 unpinned)
-  const keywords = partition.tagKeywords;
+  let keywords = partition.tagKeywords;
+  if (Array.isArray(rawKeywords) && rawKeywords.length >= 6) {
+    keywords = rawKeywords.slice(0, 10).map((k: any) => String(k).trim()).filter(Boolean);
+  }
+
+  const siteMetaTitle =
+    parsed.siteMetaTitle ||
+    parsed.site_meta_title ||
+    parsed.prompt_title ||
+    parsed.promptTitle ||
+    parsed.title ||
+    getSiteMetaTitle(v);
 
   return {
     aboutPrompt,
@@ -1399,7 +1419,7 @@ REQUIRED KEYWORD ASSIGNMENTS:
     charCount: seoDescription.length,
     keywords,
     keywordsMatched: partition.aboutKeywords,
-    siteMetaTitle: parsed.siteMetaTitle || parsed.site_meta_title || parsed.title || getSiteMetaTitle(v),
+    siteMetaTitle,
   };
 }
 

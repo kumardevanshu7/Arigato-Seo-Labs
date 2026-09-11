@@ -1,0 +1,756 @@
+{
+  "name": "Prompt Metadata Output Framework",
+  "version": "1.0",
+  "purpose": "Convert a user's image-generation prompt/reference into exactly four copy-ready metadata fields while preserving the user's constraints and counting rules.",
+  "workflow": {
+    "input": "User provides an image/reference plus an image-generation prompt.",
+    "output": "Always return exactly four fields: About This Prompt, SEO Description, SEO Keywords, Prompt Title.",
+    "do_not": [
+      "Do not generate/edit an image unless explicitly requested.",
+      "Do not invent visual details absent from the user's prompt/reference.",
+      "Do not omit the fourth field, Prompt Title."
+    ]
+  },
+  "fields": {
+    "1_about_this_prompt": {
+      "format": "One copyable code block.",
+      "purpose": "Natural summary of what the supplied prompt creates.",
+      "content": [
+        "Main visual concept",
+        "Identity/face preservation",
+        "Pose and interaction",
+        "Outfit/accessories when important",
+        "Environment/background",
+        "Lighting",
+        "Camera/composition",
+        "Realism/photo treatment"
+      ],
+      "count": {
+        "unit": "words",
+        "minimum": 151,
+        "maximum": 199,
+        "preferred": "180-199 most of the time",
+        "label": "Word count: X/200"
+      },
+      "rules": [
+        "Never label this as Character count.",
+        "Never use exactly 200 words.",
+        "Count whitespace-separated words.",
+        "Recount before reporting the number."
+      ]
+    },
+    "2_seo_description": {
+      "format": "One copyable code block.",
+      "purpose": "Short search-friendly description directly related to the image/prompt.",
+      "count": {
+        "unit": "characters",
+        "maximum": 160,
+        "preferred": "145-160",
+        "label": "Character count: X/160"
+      },
+      "rules": [
+        "Count spaces and punctuation.",
+        "Never label this as Word count.",
+        "Keep it directly relevant and searchable.",
+        "Recount before reporting the number."
+      ]
+    },
+    "3_seo_keywords": {
+      "format": "One copyable code block.",
+      "count": {
+        "exact_keywords": 10,
+        "label": "10/10 keywords"
+      },
+      "structure": {
+        "keywords_1_to_3": "Must be specifically related to the supplied image/prompt.",
+        "keywords_4_to_10": "Broader/reusable SEO keywords following the user's established couple/AI-image keyword convention."
+      },
+      "rules": [
+        "Exactly 10 comma-separated keywords.",
+        "Do not accidentally create an 11th keyword with an extra comma.",
+        "Avoid duplicates.",
+        "Use the user's established reusable keywords when known."
+      ],
+      "example": [
+        "1980s male portrait",
+        "retro Royal Enfield portrait",
+        "vintage 80s street photo",
+        "romantic couple prompt",
+        "Gemini romantic prompt",
+        "nostalgic couple photo",
+        "confident couple vibe",
+        "dreamy couple aesthetic",
+        "intimate couple prompt",
+        "realistic couple photo"
+      ]
+    },
+    "4_prompt_title": {
+      "format": "One copyable code block.",
+      "purpose": "Short, distinctive title describing the supplied prompt.",
+      "rules": [
+        "Keep it concise.",
+        "Make it relevant to the visual concept.",
+        "Do not turn it into a keyword list."
+      ]
+    }
+  },
+  "required_response_template": [
+    "## About This Prompt",
+    "```text\n[151-199 words]\n```",
+    "**Word count: X/200 ✅**",
+    "",
+    "## SEO Description",
+    "```text\n[160 characters or fewer]\n```",
+    "**Character count: X/160 ✅**",
+    "",
+    "## SEO Keywords",
+    "```text\n[keyword 1, keyword 2, ... keyword 10]\n```",
+    "**10/10 keywords ✅**",
+    "",
+    "## Prompt Title",
+    "```text\n[title]\n```"
+  ],
+  "hard_constraints": [
+    "Exactly four fields.",
+    "About This Prompt: 151-199 words; preferably 180-199.",
+    "About This Prompt count must say Word count.",
+    "SEO Description: maximum 160 characters; preferably 145-160.",
+    "SEO Description count must say Character count.",
+    "SEO Keywords: exactly 10.",
+    "SEO Keywords 1-3 must describe the current image/prompt.",
+    "SEO Keywords 4-10 must follow the user's reusable keyword convention.",
+    "Prompt Title must always be included.",
+    "Each field must have its own copyable code block.",
+    "Never add a fifth field."
+  ],
+  "validation_before_final_answer": [
+    "Count About This Prompt words.",
+    "Confirm count is 151-199.",
+    "Confirm its label says Word count.",
+    "Count SEO Description characters including spaces/punctuation.",
+    "Confirm count is <=160.",
+    "Confirm its label says Character count.",
+    "Split SEO Keywords by commas and confirm exactly 10 entries.",
+    "Confirm first 3 are image-specific.",
+    "Confirm last 7 follow the established reusable convention.",
+    "Confirm Prompt Title exists.",
+    "Confirm there are exactly four fields."
+  ],
+  "user_preferences": {
+    "length_variation": "Do not force every About This Prompt to exactly 199 words. Natural variation is preferred, but never below 151 or at/above 200.",
+    "usual_target": "Most About This Prompt outputs should be above 180 words.",
+    "keyword_pattern": "3 image-specific keywords + 7 broader/reusable keywords.",
+    "format": "Four fields in four separate code blocks, with the relevant count underneath.",
+    "priority": "Counting accuracy is critical."
+  },
+  "example_library": {
+    "total_examples": 22,
+    "instruction": "These examples show how different user image prompts are converted into the same four-field output format. Preserve the user's concept and constraints while adapting the metadata to the specific image.",
+    "examples": [
+      {
+        "id": "EX01",
+        "reference_type": "three-frame casual selfie collage",
+        "input_concept": "Three stacked smartphone selfie frames of a boy and girl, exact identities, beige girl top, grey/black boy clothing, bored cheek-on-palm pose, playful middle-finger/wink/tongue frame, indoor neutral background.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a casual three-frame smartphone selfie collage featuring the same boy and girl with strict facial identity preservation. The composition uses three horizontal frames stacked vertically, each capturing a different spontaneous moment. The first frame shows both subjects resting their cheeks on their hands with bored, playful expressions. The middle frame presents a relaxed close selfie with the girl leaning toward the camera and the boy looking calmly ahead. The bottom frame becomes more playful, with the girl making a cheeky gesture while the boy winks and sticks out his tongue slightly. Their clothing remains consistent with the reference, including the girl's beige thin-strap top and the boy's grey or black casual clothing. The environment stays indoors with a neutral wall and soft natural lighting. Smartphone imperfections such as slight blur, minor noise, uneven framing, natural skin texture, visible pores, messy hair, and realistic fabric wrinkles keep the image authentic. The final result should feel like three quickly captured phone selfies taken moments apart rather than a polished photoshoot or AI-generated collage.",
+          "seo_description": "Create a realistic three-frame couple selfie collage with exact faces, casual poses, natural skin, smartphone imperfections, and authentic candid indoor photography.",
+          "seo_keywords": [
+            "three frame couple selfie",
+            "stacked selfie collage",
+            "casual couple photo",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Three-Frame Casual Couple Selfie Collage",
+          "counts": {
+            "about_word_count": 174,
+            "seo_description_character_count": 165,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX02",
+        "reference_type": "dreamy intimate cheek-kiss selfie",
+        "input_concept": "Dim bedroom nighttime couple selfie with cheek kiss, hand cupping jaw, red lipstick marks, warm lamp/string-light bokeh, dreamy haze, grain and low-quality phone softness.",
+        "output": {
+          "about_this_prompt": "This prompt recreates an intimate nighttime couple selfie with a deliberately soft, dreamy and low-quality smartphone appearance. The boy and girl must retain their exact uploaded facial identities, including facial structure, skin tone, hair, natural proportions and recognizable imperfections. The girl sits close on the left while gently cupping the boy's cheek and kissing him, creating a tender candid interaction. The boy remains relaxed with a sleepy expression while the girl maintains a soft direct gaze. Warm lamp light and small string lights appear in the dim bedroom background, producing gentle bokeh and subtle glow without turning the image into a cinematic render. The photographic treatment is intentionally imperfect: strong grain, digital noise, low contrast, soft focus, slight motion blur, hazy highlights, mild vignette and realistic phone-camera softness. Skin should retain authentic texture rather than looking plastic or airbrushed. The overall composition stays vertical 9:16 with close framing and natural contact between the subjects. The goal is an unintentional-looking romantic phone snapshot that feels spontaneous, slightly blurry and genuinely captured in a private nighttime moment.",
+          "seo_description": "Create a dreamy intimate couple selfie with exact faces, cheek kiss, warm bedroom lights, grain, haze, and authentic low-quality smartphone realism.",
+          "seo_keywords": [
+            "dreamy cheek kiss selfie",
+            "nighttime couple selfie",
+            "hazy romantic couple photo",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "intimate couple prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Dreamy Nighttime Cheek-Kiss Selfie",
+          "counts": {
+            "about_word_count": 175,
+            "seo_description_character_count": 148,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX03",
+        "reference_type": "warm café selfie",
+        "input_concept": "Boy and girl close selfie in an indoor café with plants and hanging lights, exact faces, fitted tank top and striped shirt, fish pout expressions, warm ambient lighting and phone imperfections.",
+        "output": {
+          "about_this_prompt": "This prompt creates an ultra-realistic casual café selfie of the uploaded boy and girl while keeping their exact facial identities unchanged. The couple stands very close together inside a warmly lit café or restaurant, with the girl slightly in front and the boy leaning naturally toward her. Their heads touch and their shoulders meet, creating an effortless couple composition rather than a stiff portrait. Both maintain playful fish-pout expressions while looking naturally toward the camera. The girl wears a simple fitted tank top and the boy wears a light striped shirt with an open collar and clear glasses, while all visible accessories remain preserved. The background contains realistic café details such as plants, hanging lights and softly blurred activity. Warm ambient illumination creates natural highlights on the skin and subtle reflections in the eyes and glasses. The image should retain pores, tiny blemishes, uneven skin tone, hair flyaways, fabric wrinkles and realistic light falloff. Smartphone characteristics include a vertical 9:16 crop, slight wide-angle perspective, mild softness, low-light grain, compression artifacts and imperfect exposure. The final result should look like a genuine casual phone selfie rather than a cinematic or heavily edited image.",
+          "seo_description": "Create a realistic warm café couple selfie with exact faces, fish pouts, natural skin, striped outfits, plants, hanging lights, and phone-camera imperfections.",
+          "seo_keywords": [
+            "cafe couple selfie",
+            "fish pout couple photo",
+            "warm restaurant selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Warm Café Couple Selfie — Natural Pout",
+          "counts": {
+            "about_word_count": 192,
+            "seo_description_character_count": 159,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX04",
+        "reference_type": "1990s black-and-white party portrait",
+        "input_concept": "High-contrast black-and-white disposable-camera party portrait of a curly-haired boy in black shirt and glasses, intense siren eyes, grainy dark-academia bad-boy mood.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a high-contrast black-and-white portrait with the unmistakable look of a 1990s disposable camera photograph taken at a dark house party. The uploaded male identity remains the central priority, with his exact face structure, natural proportions, hairstyle, skin characteristics and recognizable features preserved without beautification. He wears a black button-down shirt and looks directly into the camera with a calm but intense expression, emphasizing his light-colored eyes and slightly heavy-lidded gaze. The surrounding party environment remains dark and loosely visible, with people, cups and background activity softened by the limited camera quality. Harsh on-camera flash creates bright facial highlights while the surrounding room falls into deep shadow. The photograph should contain strong monochrome contrast, visible film grain, low-resolution texture, slight blur, imperfect exposure and authentic disposable-camera artifacts. The styling can suggest a slightly cute dark-academia bad-boy character without changing the person's actual facial identity. The final image must feel like a genuine old party snapshot rather than a modern digital recreation, polished portrait, CGI render or cinematic still. Natural imperfections and the characteristic lo-fi camera response are essential to the nostalgic 1990s atmosphere.",
+          "seo_description": "Create a realistic 1990s black-and-white party portrait with exact identity, harsh flash, grain, siren eyes, and authentic disposable-camera texture.",
+          "seo_keywords": [
+            "1990s black white portrait",
+            "disposable camera party photo",
+            "dark academia boy portrait",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "nostalgic photo prompt",
+            "AI photo prompt",
+            "realistic portrait photo",
+            "vintage photo prompt",
+            "AI image prompt"
+          ],
+          "prompt_title": "1990s Disposable Camera — Black-and-White Portrait",
+          "counts": {
+            "about_word_count": 185,
+            "seo_description_character_count": 149,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX05",
+        "reference_type": "early-2000s party group photo",
+        "input_concept": "Three-person indoor party snapshot, boy centered with arms around two girls, early-2000s point-and-shoot flash, black outfits, mouse/cat ear headbands and jersey.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a nostalgic early-2000s indoor party group photograph using the supplied identities while preserving the original group composition and casual energy. Three people stand closely together in a home-party environment, with the male subject positioned in the center and his arms around the two girls. The girls lean slightly inward, creating a natural shoulder-to-shoulder arrangement, while everyone looks toward the camera with relaxed happy expressions. The styling follows an early digital point-and-shoot aesthetic, including simple black outfits, playful animal-ear headbands and a dark sports jersey with a large number print. Harsh direct flash illuminates the faces and clothing while leaving the background noticeably darker, producing the characteristic washed highlights and deep shadows of early digital party cameras. The room should retain background people, household details and imperfect framing without becoming overly polished. Slight digital noise, flash glare, minor blur, compression softness and moderate contrast help establish the authentic period feel. The vertical 9:16 composition should preserve the medium-close group framing and casual candid atmosphere. The final photograph should feel like an actual party snapshot from the early 2000s, not a modern cinematic recreation or stylized illustration.",
+          "seo_description": "Create an authentic early-2000s party group photo with flash lighting, exact faces, nostalgic outfits, casual poses, digital noise, and point-and-shoot realism.",
+          "seo_keywords": [
+            "early 2000s party photo",
+            "flash group selfie",
+            "nostalgic party snapshot",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "realistic group photo",
+            "vintage digital photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Early-2000s Party Group Snapshot",
+          "counts": {
+            "about_word_count": 188,
+            "seo_description_character_count": 160,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX06",
+        "reference_type": "three-frame grass selfie collage",
+        "input_concept": "Three consecutive top-down grass selfies at golden hour: wink/smile, eye contact with each other, then both pouting; natural hair and warm sunlight.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a three-frame vertical smartphone collage of the uploaded boy and girl lying side-by-side on fresh green grass during warm late-afternoon sunlight. Their exact facial identities remain locked to the reference images, including face shape, eyes, nose, lips, skin tone, hair and natural imperfections. The camera looks down from above, producing a close personal selfie perspective with both faces dominating the frame. The first frame captures one eye closed while smiling softly, the second focuses on the couple looking directly into each other's eyes, and the third uses matching playful pout expressions. Their hair spreads naturally across the grass with small loose strands and subtle movement from the breeze. Golden-hour sunlight creates warm highlights across their faces while the surrounding grass remains richly detailed and naturally exposed. The image should retain realistic skin texture, pores, minor blemishes and natural color variation rather than applying beauty smoothing. Smartphone characteristics include slight handheld softness, subtle grain, imperfect framing and mild wide-angle distortion. The three panels should feel like consecutive photographs taken moments apart, maintaining consistent identity and environment while allowing small natural differences in expression and framing. The final collage remains vertical 9:16 and should look like a genuine personal phone gallery image.",
+          "seo_description": "Create a realistic three-frame grass selfie collage with exact faces, golden-hour sunlight, playful pouts, natural hair, green grass, and phone-camera texture.",
+          "seo_keywords": [
+            "grass couple selfie",
+            "golden hour couple collage",
+            "three frame pout selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Golden-Hour Grass Selfie — Three-Frame Couple Collage",
+          "counts": {
+            "about_word_count": 203,
+            "seo_description_character_count": 159,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX07",
+        "reference_type": "cinematic romantic poster",
+        "input_concept": "Extreme close side-profile couple poster inspired by a streaming-romance poster, noses nearly touching, blue-purple-orange bokeh, romantic tension, title typography.",
+        "output": {
+          "about_this_prompt": "This prompt creates a vertical 9:16 romantic poster-style image featuring the uploaded boy and girl in an extreme close-up side-profile composition. Their facial identities remain strictly preserved, including bone structure, skin tone, asymmetry, hair, facial texture and visible accessories. The couple faces one another from opposite sides of the frame with their noses almost touching, creating intimate romantic tension through eye contact and proximity. The girl maintains a soft emotional expression while the boy looks focused and intense, with both faces occupying most of the composition. The background is reduced to a heavily blurred cinematic city-light atmosphere transitioning through deep blue, purple and warm orange tones. Soft directional lighting creates cool ambient shadows and warm highlights while preserving realistic skin tones and natural facial texture. A shallow depth of field, subtle film grain, realistic focus falloff and slight handheld softness should keep the photograph believable despite the polished poster composition. The design includes a small streaming-service style logo at the top, a production line, an elegant serif title in the center and release information near the bottom. The final result should resemble a professionally designed romantic movie poster built from a real photographed couple, while avoiding plastic skin, artificial facial features or excessive digital perfection.",
+          "seo_description": "Create a romantic cinematic couple poster with exact faces, intimate side profiles, colorful bokeh, realistic skin, elegant typography, and 9:16 framing.",
+          "seo_keywords": [
+            "romantic couple poster",
+            "face to face couple",
+            "cinematic couple poster",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "intimate couple photo",
+            "realistic couple portrait",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Face-to-Face Romantic Couple Poster",
+          "counts": {
+            "about_word_count": 205,
+            "seo_description_character_count": 153,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX08",
+        "reference_type": "three-frame purple outfit indoor selfie",
+        "input_concept": "Three stacked indoor selfies with exact faces; girl in purple crochet halter dress, boy in black Naruto shirt; cheek kiss, eye-covering playful frame, lip kiss.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a three-frame indoor smartphone selfie collage featuring the same uploaded boy and girl with strict identity preservation and deterministic pose structure. The girl wears the specified purple crochet halter mini dress with its textured knit construction, while the boy wears the black Naruto graphic T-shirt exactly as requested. In the top frame, the boy leans toward the girl's cheek for a kiss while she faces the camera with a soft smile. The middle frame becomes playful, with the girl covering the boy's eyes using one hand while he smiles broadly and holds her hand. The bottom frame shows the couple turned toward each other during a close kiss, maintaining tight intimate alignment. The environment remains a simple neutral indoor room with soft natural lighting and mild background blur. Natural skin texture, pores, slight redness, hair flyaways, fabric wrinkles and realistic hand anatomy are essential. The camera should behave like a front-facing smartphone with consistent framing across all three panels, minor noise, slight softness and imperfect sharpness. The final collage should feel like three quick casual selfies taken moments apart, preserving the same people, outfits and visual structure while avoiding AI artifacts, distorted anatomy, artificial beauty filters or polished studio aesthetics.",
+          "seo_description": "Create a realistic three-frame couple selfie collage with exact faces, purple crochet outfit, Naruto shirt, playful kisses, natural skin, and phone realism.",
+          "seo_keywords": [
+            "purple crochet couple selfie",
+            "three frame kiss collage",
+            "Naruto shirt couple photo",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Purple Crochet Couple — Three-Frame Selfie Collage",
+          "counts": {
+            "about_word_count": 203,
+            "seo_description_character_count": 156,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX09",
+        "reference_type": "cowboy-hat indoor couple selfie",
+        "input_concept": "Boy and girl seated closely indoors wearing oversized mint and pink fluffy cowboy hats, black/white outfits, cheek-to-cheek eye contact, natural sunlight.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a playful close smartphone selfie of the uploaded boy and girl seated together indoors while preserving their exact facial identities and natural appearance. The boy is positioned on the left and the girl on the right, with their faces extremely close and their eyes locked on each other. The girl gently cups the boy's cheek, creating a relaxed intimate interaction rather than a staged pose. Both wear oversized fluffy feathered cowboy hats with white strings, with the boy's hat in mint green and the girl's in bright pink. The girl also retains her pink nail polish, turquoise ring and layered bracelets, while their black, white and denim clothing remains natural with realistic wrinkles and fabric tension. The room includes a neutral wall, a blue-green abstract painting and wooden architectural elements, matching the reference atmosphere. Soft natural sunlight enters from a nearby window and falls across their faces at an angle, creating gentle highlights and realistic shadows without artificial studio lighting. Smartphone imperfections such as slight motion blur, minor grain, compression softness and uneven exposure keep the image believable. The final result should look like an authentic candid phone selfie captured during a relaxed moment, with raw skin texture, natural hair and zero beauty-filter or AI-rendered appearance.",
+          "seo_description": "Create a realistic couple selfie with colorful fluffy cowboy hats, exact faces, natural sunlight, cheek-to-cheek eye contact, and candid phone-camera texture.",
+          "seo_keywords": [
+            "fluffy cowboy hat selfie",
+            "mint pink couple selfie",
+            "sunlit couple portrait",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Mint & Pink Cowboy Hat Couple Selfie",
+          "counts": {
+            "about_word_count": 209,
+            "seo_description_character_count": 158,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX10",
+        "reference_type": "raw sunlight extreme close-up selfie",
+        "input_concept": "Extreme close-up male-left/female-right outdoor selfie, both pouting, harsh golden-hour sunlight, visible pores/acne, phone softness and grain.",
+        "output": {
+          "about_this_prompt": "This prompt creates an ultra-close outdoor smartphone selfie of the uploaded boy and girl during strong golden-hour sunlight. The male subject occupies the left side and the female subject the right, with their cheeks pressed close and both faces filling most of the vertical 9:16 frame. Their exact facial identities remain the highest priority, preserving facial structure, eye shape, nose, lips, skin tone, hairline, hairstyle and natural imperfections without beautification or retouching. Both subjects make relaxed playful pout expressions while leaning naturally toward the camera. The lighting is intentionally raw and directional, creating an uneven half-face pattern with strong sunlight on one side, softer shadows on the other and subtle highlights across the nose, cheeks and lips. The background is minimally visible, with hints of an outdoor setting and natural environmental exposure. Smartphone realism is emphasized through slight wide-angle distortion, imperfect focus, micro softness, subtle grain, minor compression and mild sharpening typical of a phone camera. Skin should retain visible pores, acne marks, natural shine and uneven texture instead of becoming smooth or plastic. The final image should feel like an unedited spontaneous sunlight selfie captured quickly on a phone, with imperfect framing and natural exposure rather than cinematic grading, professional retouching or artificial depth effects.",
+          "seo_description": "Create a raw close-up sunlight couple selfie with exact faces, playful pouts, visible skin texture, golden-hour light, grain, and authentic phone realism.",
+          "seo_keywords": [
+            "sunlight close up selfie",
+            "golden hour pout couple",
+            "raw couple selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Raw Golden-Hour Close-Up Couple Selfie",
+          "counts": {
+            "about_word_count": 206,
+            "seo_description_character_count": 154,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX11",
+        "reference_type": "fairy-light night hug selfie",
+        "input_concept": "Tight night couple selfie, girl hugging boy from left, warm fairy lights and green foliage background, soft blur, low-light grain, calm smiles.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a warm nighttime couple selfie with a close affectionate hug, using the uploaded boy and girl identities exactly as provided. The girl appears on the left and leans her head toward the boy while wrapping her arm around his shoulder and neck in a relaxed embrace. The boy remains on the right with his cheek pressed close to hers, both looking toward the camera with calm, natural smiles. Their facial structure, skin tone, hairstyle and recognizable details must remain unchanged, with realistic skin texture preserved even though the overall image is intentionally soft. The background is filled with green foliage and warm hanging fairy lights that create large circular highlights and gentle glow halos. The photograph should look like a handheld smartphone capture in low light, not a cinematic portrait. Slight motion softness, mild grain, sensor noise, imperfect focus, soft edges and minor compression artifacts are important to the authentic night-phone appearance. Warm yellow-green ambient illumination should fall naturally across the faces while the background remains softly blurred. The vertical 9:16 framing is tight around the heads and shoulders, emphasizing physical closeness and candid emotion. The final result should feel like a genuine spontaneous couple photo taken quickly at night, with natural imperfections and no artificial glamour or excessive sharpening.",
+          "seo_description": "Create a warm nighttime couple hug selfie with exact faces, fairy lights, green foliage, soft blur, low-light grain, and authentic smartphone realism.",
+          "seo_keywords": [
+            "fairy light couple selfie",
+            "night hug couple photo",
+            "green foliage selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Fairy-Light Night Hug — Candid Couple Selfie",
+          "counts": {
+            "about_word_count": 213,
+            "seo_description_character_count": 150,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX12",
+        "reference_type": "CJP badge elevator interaction",
+        "input_concept": "Boy in white logo kurta pinning a circular cockroach/CJP badge to girl's white tank top while she holds campaign posters, warm wooden elevator.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a realistic candid campaign moment inside a warm wooden elevator while preserving the exact uploaded identities of the boy and girl. The boy wears a white cotton kurta carrying the specified CJP or cockroach logo and stands close to the girl while carefully pinning a circular campaign badge onto the front of her white sleeveless tank top. His fingers interact naturally with the fabric as he focuses on the badge. The girl looks downward toward the badge with a subtle relaxed smile while holding multiple campaign posters or flyers against her body. The logo, badge and printed graphics must follow the supplied reference without redesign, with realistic perspective, fabric curvature, wrinkles, paper texture and metallic reflections. The elevator environment contains warm wooden panels, subtle reflections and clean modern details. Soft overhead lighting creates natural top-down shadows, gentle highlights on hair and skin and realistic light bounce from the surrounding surfaces. Smartphone realism is maintained through a 9:16 vertical composition, natural handheld framing, mild background softness and realistic exposure. Skin pores, tiny hairs, fabric fibers, paper bends and finger positioning should remain believable. The final image should feel like an authentic spontaneous campaign photograph rather than a cinematic render, with accurate anatomy, contact physics and zero artificial smoothing.",
+          "seo_description": "Create a realistic CJP campaign elevator photo with exact faces, badge pinning, logo details, posters, warm lighting, fabric physics, and phone realism.",
+          "seo_keywords": [
+            "CJP badge elevator photo",
+            "campaign badge couple photo",
+            "cockroach logo campaign selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "realistic campaign photo",
+            "couple selfie prompt",
+            "AI photo prompt"
+          ],
+          "prompt_title": "CJP Badge Pin — Candid Elevator Moment",
+          "counts": {
+            "about_word_count": 210,
+            "seo_description_character_count": 152,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX13",
+        "reference_type": "mirror selfie with blouse strings",
+        "input_concept": "Luxury bedroom mirror selfie, girl in black backless blouse/saree with very thin strings, boy in emerald kurta tying strings, boy's full face visible, warm room lighting.",
+        "output": {
+          "about_this_prompt": "This prompt recreates an ultra-realistic luxury-bedroom mirror selfie with strict identity, pose and reflection preservation. The girl stands in front of the mirror with her back mostly facing the camera, wearing an elegant black saree and deep-back blouse with very thin tie strings. Her hair is arranged in a neat low bun and her posture remains natural and relaxed. The boy stands closely behind her wearing a dark emerald-green full-sleeve kurta, holding the phone while using his other hand to carefully tie the blouse strings. His entire face must remain clearly visible beside her shoulder, looking into the mirror with a soft confident smile rather than being hidden behind her head. The room contains warm hotel-style curtains, wooden furniture, premium decor and realistic mirror reflections. Practical bedside lighting provides soft warm illumination, natural bounce and physically accurate shadows. The mirror must behave like a real reflective surface, with correct phone placement and consistent reflected geometry. Skin retains pores, asymmetry and tiny imperfections, while fabric shows realistic folds, tension and knot behavior. The vertical 9:16 composition should feel like a genuine iPhone mirror selfie, with slight handheld imperfections and natural depth. The result must remain photorealistic and avoid anime, CGI, artificial skin, cinematic grading or distorted anatomy.",
+          "seo_description": "Create a realistic luxury bedroom mirror selfie with exact faces, black backless saree blouse, emerald kurta, blouse-string tying, warm light, and reflection physics.",
+          "seo_keywords": [
+            "backless saree mirror selfie",
+            "blouse strings couple selfie",
+            "emerald kurta mirror photo",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "mirror selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Backless Saree Mirror Selfie — Blouse Tie Moment",
+          "counts": {
+            "about_word_count": 206,
+            "seo_description_character_count": 166,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX14",
+        "reference_type": "protective embrace portrait",
+        "input_concept": "Girl standing behind/above boy, tightly embracing him, boy nestled into her shoulder/upper chest, wholesome protective hug, indoor daylight, smartphone portrait.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a wholesome protective embrace portrait of the uploaded boy and girl while keeping both facial identities completely unchanged. The girl stands upright behind and slightly above the boy, wrapping both arms securely around his shoulders and upper torso. The boy remains lower and in front, leaning comfortably into the embrace with the side of his head pressed against the area near her shoulder and upper chest. Their bodies stay in continuous contact so the hug feels secure, warm and genuinely protective rather than staged. The girl has a calm caring expression while the boy looks toward the camera with a soft shy smile and a subtle playful blush. The scene takes place indoors with soft daylight entering through a nearby window and a simple home environment behind them. Natural smartphone portrait photography keeps the framing vertical 9:16 with the upper body visible and gentle background softness. Realistic skin texture, pores, subtle redness, under-eye detail, hair strands, fabric folds and natural asymmetry should remain visible. The lighting should be neutral and physically believable, without cinematic color grading, studio highlights or artificial glow. The final photograph must feel like a real candid moment captured on a normal phone, with authentic anatomy, contact pressure and natural emotional warmth.",
+          "seo_description": "Create a realistic protective couple embrace portrait with exact faces, natural daylight, close body contact, soft expressions, real skin, and smartphone texture.",
+          "seo_keywords": [
+            "protective couple embrace",
+            "wholesome hug couple photo",
+            "indoor couple portrait",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "intimate couple photo",
+            "realistic couple portrait",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Protective Embrace — Wholesome Couple Portrait",
+          "counts": {
+            "about_word_count": 208,
+            "seo_description_character_count": 162,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX15",
+        "reference_type": "nighttime event selfie",
+        "input_concept": "Blonde girl and curly-haired boy at outdoor event, black top, magenta shirt, choker, raised rock gesture, warm event lights, exact identity replacement.",
+        "output": {
+          "about_this_prompt": "This prompt reconstructs a close nighttime event selfie using the uploaded boy and girl as the only identity sources. The girl occupies the foreground with a relaxed confident smile while the boy leans in from behind her right shoulder, making a playful scrunched expression. Their faces remain exactly recognizable, with facial structure, natural asymmetry, skin tone, hair and facial hair preserved without redesign. The girl wears a fitted black top and an oxidized silver statement choker, while the boy wears a dark magenta shirt and retains his specified accessories. His raised hand appears close to the camera in a rock or metal gesture, with finger placement and wrist rotation carefully preserved. The background remains an outdoor evening event with blurred pavement, decorative plants, signage, people and warm ambient lighting. Soft yellow-orange illumination creates realistic highlights and shadows without turning the scene into a studio portrait. Smartphone realism includes a close wide-angle perspective, natural exposure, subtle lens artifacts, mild noise, compression softness and imperfect framing. The final image should look like a genuine handheld event selfie rather than an editorial photograph. Natural contact between shoulders, realistic hand anatomy, fabric folds and believable facial expressions are essential to maintaining the spontaneous real-life atmosphere.",
+          "seo_description": "Create a realistic nighttime event couple selfie with exact faces, statement choker, playful hand gesture, warm lights, natural skin, and phone-camera texture.",
+          "seo_keywords": [
+            "night event couple selfie",
+            "statement choker selfie",
+            "rock gesture couple photo",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "night selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Night Event Selfie — Playful Couple Moment",
+          "counts": {
+            "about_word_count": 201,
+            "seo_description_character_count": 159,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX16",
+        "reference_type": "bathroom mirror cheek-kiss selfie",
+        "input_concept": "Warm bathroom mirror selfie, girl holding phone, boy kissing cheek, beige stone walls, wooden door, white graphic sweater and grey sweater.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a warm indoor bathroom mirror selfie of the uploaded boy and girl with strict identity preservation and realistic reflection physics. The girl stands slightly in front while holding the phone toward the mirror, maintaining a soft relaxed smile and natural posture. The boy stands just behind her and leans toward her cheek for a gentle kiss, with one hand resting naturally behind her neck. Their bodies remain close without stiffness, creating a private and affectionate everyday moment. The bathroom environment contains beige or stone walls, a wooden door, a ventilation grill, a subtle sink edge and minor mirror imperfections such as faint smudges. The boy wears a white sweater with a bold black graphic and realistic knit texture, while the girl wears a fitted grey sweater with natural folds and a simple wrist accessory. Warm-white overhead lighting falls from above and creates soft highlights on the forehead and nose bridge with subtle shadows under the chin. The mirror reflection must remain physically consistent with the subjects, phone and lighting. A smartphone lens around 24–26mm produces natural perspective, slight handheld imperfection and mild softness. Skin pores, hair flyaways, fabric fibers and small asymmetries should remain believable. The final result should look like a genuine unedited bathroom mirror selfie rather than a cinematic or AI-generated image.",
+          "seo_description": "Create a realistic bathroom mirror couple selfie with exact faces, cheek kiss, warm lighting, sweaters, beige walls, natural reflection physics, and phone realism.",
+          "seo_keywords": [
+            "bathroom mirror couple selfie",
+            "cheek kiss mirror photo",
+            "warm indoor couple selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "mirror selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Warm Bathroom Mirror — Cheek-Kiss Selfie",
+          "counts": {
+            "about_word_count": 217,
+            "seo_description_character_count": 163,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX17",
+        "reference_type": "outdoor daylight kiss selfie",
+        "input_concept": "Very close outdoor couple kiss, girl in off-shoulder patterned top, boy in black shirt and green plaid overshirt, chains, rings and earring, raw daylight phone look.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a very close outdoor smartphone selfie of the uploaded boy and girl sharing a natural kiss in daylight. Both identities remain strictly preserved, including facial structure, asymmetry, skin tone, pores, acne marks, hair and natural imperfections. The girl tilts her face upward with her eyes closed while the boy leans downward into the kiss, creating a close but slightly imperfect alignment that feels spontaneous rather than staged. The girl wears an off-shoulder patterned top with a thin necklace and open hair, while the boy wears a dark T-shirt layered beneath an open green plaid shirt, with chain necklaces, multiple rings and a small earring. Clothing remains naturally wrinkled and responds realistically to body position. Outdoor daylight provides uneven illumination, with one side of the faces slightly brighter, soft highlights on the skin and subtle shadows beneath the chin, jaw and fingers. The background contains trees and a bright, slightly washed sky. Smartphone characteristics include a close wide-angle perspective, mild edge distortion, slight face sharpening, minimal noise, tiny highlight clipping and subtle handheld softness. The final image should look like an accidental real phone photo rather than a cinematic romantic portrait, with raw skin texture, imperfect framing, natural contact and authentic daylight exposure.",
+          "seo_description": "Create a raw outdoor couple kiss selfie with exact faces, plaid layers, natural daylight, visible skin texture, accessories, slight grain, and phone realism.",
+          "seo_keywords": [
+            "outdoor couple kiss selfie",
+            "daylight kiss couple photo",
+            "plaid shirt couple selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "intimate kiss photo",
+            "realistic couple selfie",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Raw Daylight Kiss — Outdoor Couple Selfie",
+          "counts": {
+            "about_word_count": 205,
+            "seo_description_character_count": 157,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX18",
+        "reference_type": "1980s retro mirror selfie",
+        "input_concept": "Single-person 1980s mirror selfie transformation, polka-dot puff-sleeve dress, large curls, hoops, bangles, belt, beige stone elevator/lobby background, analog treatment.",
+        "output": {
+          "about_this_prompt": "This prompt transforms the uploaded portrait into an authentic 1980s-inspired mirror selfie while preserving the subject's exact facial identity, facial structure, skin tone, natural proportions and recognizable appearance. The styling recreates a retro feminine look with voluminous curls, a polka-dot or floral puff-sleeve dress, fitted waist, flared skirt, statement earrings, necklace or choker, stacked bangles and a wide belt. Period-inspired makeup adds defined brows, blush, glossy or bold lips and subtle colorful eyeshadow without altering the face. The pose remains casual and relaxed, with one arm raised behind the head and the other holding a smartphone vertically near the lower face. The background stays a realistic beige stone elevator or lobby with horizontal panel seams, a reddish-brown wooden door, metallic hardware and warm neutral lighting. Realistic adult body proportions are critical, including natural head-to-body scale and believable limbs. The camera remains vertical 9:16 with a natural mirror perspective and mild smartphone characteristics. Warm faded analog colors, soft focus, subtle film grain and aged texture create a vintage photograph feel. The result should look like a genuine retro-inspired personal mirror photo, not a cartoon, fashion illustration or artificially beautified modern image.",
+          "seo_description": "Create an authentic 1980s mirror selfie with retro fashion, big curls, vintage makeup, warm analog tones, natural proportions, and exact face identity.",
+          "seo_keywords": [
+            "1980s mirror selfie",
+            "retro 80s portrait",
+            "vintage mirror selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "nostalgic couple photo",
+            "confident couple vibe",
+            "dreamy couple aesthetic",
+            "intimate couple prompt",
+            "realistic couple photo"
+          ],
+          "prompt_title": "1980s Retro Mirror Selfie — Vintage Portrait",
+          "counts": {
+            "about_word_count": 190,
+            "seo_description_character_count": 151,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX19",
+        "reference_type": "1980s Royal Enfield street portrait",
+        "input_concept": "Full-body male 1980s street portrait beside Royal Enfield, denim jacket, striped shirt, high-waisted jeans, wire glasses, watch, sneakers, warm faded Indian street.",
+        "output": {
+          "about_this_prompt": "This prompt transforms the uploaded male portrait into an authentic 1980s-inspired full-body street photograph while preserving the exact facial identity, facial structure, skin tone and natural proportions. The hairstyle becomes a large, dense, voluminous 1980s curly look inspired by classic Bollywood heroes, while the underlying face remains naturally sized and undistorted. The outfit combines a fitted denim jacket, striped collared shirt, high-waisted straight jeans with rolled ankles, brown leather belt, wire-rim glasses, chunky analog wristwatch and white canvas sneakers. The subject stands casually beside a classic Royal Enfield motorcycle, resting one hand on the bike while the other reaches behind his head, with weight shifted naturally onto one leg. His expression remains calm and confident with a straight-on gaze. The background recreates a nostalgic Indian street with aged buildings, faded shop signage, vintage vehicles, dust and warm sunset haze. Natural full-body composition is essential so the head-to-body ratio remains realistic and the face is not enlarged by the camera. Warm faded analog tones, soft focus, subtle grain, aged borders and slight photographic imperfections reinforce the period aesthetic. The final vertical 9:16 image should feel like a genuine vintage photograph rather than a modern fashion shoot or stylized digital render.",
+          "seo_description": "Create an authentic 1980s male portrait with big curls, denim fashion, a Royal Enfield, warm vintage tones, realistic proportions, and analog film texture.",
+          "seo_keywords": [
+            "1980s male portrait",
+            "retro Royal Enfield portrait",
+            "vintage 80s street photo",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "nostalgic couple photo",
+            "confident couple vibe",
+            "dreamy couple aesthetic",
+            "intimate couple prompt",
+            "realistic couple photo"
+          ],
+          "prompt_title": "1980s Rockstar Portrait — Royal Enfield Vintage Look",
+          "counts": {
+            "about_word_count": 199,
+            "seo_description_character_count": 155,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX20",
+        "reference_type": "extreme cheek-press selfie",
+        "input_concept": "Boy on right gently pressing girl's cheeks with one hand, girl pouting from cheek compression, extreme close-up, warm indoor light, exact identities.",
+        "output": {
+          "about_this_prompt": "This prompt recreates an ultra-realistic close-up smartphone photograph of the uploaded boy and girl in a playful cheek-press interaction. The boy stands on the right while the girl occupies the left side of the frame, with both faces filling almost the entire vertical 9:16 composition. The boy gently presses both sides of the girl's cheeks with one hand, naturally compressing her cheeks inward and causing her lips to form a playful pout. His fingers and palm must follow realistic hand anatomy and contact pressure, while the girl's head turns slightly toward him as she looks sideways at his face. The boy looks directly at her with a curious or amused expression, keeping their faces extremely close without unnatural distortion. The scene remains indoors with simple neutral walls and warm household ceiling lighting. Smartphone realism is emphasized through a close wide-angle perspective, imperfect framing, mild digital noise, subtle skin pores, natural shadows and slightly imperfect focus. Both faces must preserve their exact reference identities, including facial proportions, asymmetry, skin tone, hair and natural texture, with no beautification or reshaping. The final image should feel like an unplanned candid couple moment rather than a posed studio portrait. Realistic cheek deformation, finger placement, contact shadows, skin texture and natural emotional expression are the key realism requirements.",
+          "seo_description": "Create a realistic cheek-press couple selfie with exact faces, playful pout, natural hand contact, warm indoor light, skin texture, and smartphone realism.",
+          "seo_keywords": [
+            "cheek press couple selfie",
+            "playful pout couple photo",
+            "close up couple interaction",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Cheek Press — Playful Close-Up Couple Selfie",
+          "counts": {
+            "about_word_count": 213,
+            "seo_description_character_count": 155,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX21",
+        "reference_type": "festive traditional mirror selfie",
+        "input_concept": "Traditional Indian festive mirror selfie with boy in orange-red printed kurta and girl in white mirror-work dress, phone covering kiss point, pink curtains and warm room.",
+        "output": {
+          "about_this_prompt": "This prompt recreates a warm traditional Indian festive mirror selfie of the uploaded boy and girl with strict facial identity and clothing preservation. The boy stands on the left wearing an orange-red printed kurta with a bandhani-style geometric pattern and white cuffs, while holding a rose-gold or pink smartphone vertically between their faces. The girl stands on the right in a white or cream sleeveless embroidered dress featuring mirror-work and geometric detailing. Both lean toward one another with eyes closed for a tender kiss, but the phone is positioned precisely at lip level so the actual point of contact remains completely hidden. The boy's other arm wraps naturally around the girl's waist while her body leans comfortably into him. Her large silver hoop earring, bracelet and other visible accessories remain intact. The background is a warm home bedroom with pink curtains, a small illuminated window, cream walls, a hanging decorative item and dark furniture. Soft warm ambient light creates realistic skin tones and gentle shadows without HDR or cinematic grading. The mirror reflection, phone placement, hands and body geometry must remain physically consistent. The final 9:16 image should look like a genuine handheld festive mirror selfie, preserving natural skin texture, hair, fabric folds, accessories and slight smartphone imperfections.",
+          "seo_description": "Create a realistic Indian festive couple mirror selfie with exact faces, traditional outfits, phone-covered kiss, warm lighting, and natural reflection physics.",
+          "seo_keywords": [
+            "Indian festive mirror selfie",
+            "traditional couple kiss photo",
+            "phone covered kiss selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "couple photo prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Festive Mirror Kiss Selfie — Traditional Indian Couple",
+          "counts": {
+            "about_word_count": 208,
+            "seo_description_character_count": 160,
+            "seo_keyword_count": 10
+          }
+        }
+      },
+      {
+        "id": "EX22",
+        "reference_type": "extreme intimate face-press selfie",
+        "input_concept": "Extreme close-up face press, girl above boy, cheeks touching, warm indoor light, exact female smile, controlled natural skin and realistic smartphone perspective.",
+        "output": {
+          "about_this_prompt": "This prompt recreates an extremely close intimate smartphone selfie in which the uploaded boy and girl press their faces closely together. The female subject appears slightly above and overlaps the male subject, with her cheek touching his cheek and her head tilted gently downward. The male face sits lower in the frame, tilted slightly upward, while both subjects look directly toward the camera with relaxed intimate expressions. Their facial identities remain the highest priority, preserving exact facial structure, eye shape, nose, lips, hairline, hairstyle, skin tone and natural asymmetry. The girl's expression retains the soft closed-mouth smile and recognizable facial behavior of the reference, while the boy maintains his exact identity and specified clean, healthy skin appearance. Loose hair strands, subtle frizz and realistic contact shadows help establish physical authenticity. A warm indoor lamp provides soft directional illumination with gentle highlights on cheeks and lips and slight shadowing beneath the eyes and nose. The camera is extremely close, using a wide smartphone lens that naturally enlarges nearby features without altering identity. Mild grain, imperfect focus and slight edge softness create authentic phone-camera character. The final vertical 9:16 image should feel like a spontaneous private selfie captured at very close range, with natural skin detail and realistic cheek compression rather than polished beauty retouching.",
+          "seo_description": "Create an ultra-close face-press couple selfie with exact identities, cheek contact, warm indoor light, natural skin, soft hair, and smartphone realism.",
+          "seo_keywords": [
+            "face press couple selfie",
+            "extreme close couple photo",
+            "cheek contact selfie",
+            "romantic couple prompt",
+            "Gemini romantic prompt",
+            "intimate couple prompt",
+            "AI couple photo",
+            "couple selfie prompt",
+            "realistic couple photo",
+            "AI photo prompt"
+          ],
+          "prompt_title": "Ultra Close Face Press — Intimate Couple Selfie",
+          "counts": {
+            "about_word_count": 213,
+            "seo_description_character_count": 152,
+            "seo_keyword_count": 10
+          }
+        }
+      }
+    ]
+  },
+  "example_library_rules": [
+    "Examples are reference patterns, not text that must be copied verbatim.",
+    "Use the current user's image/prompt as the source of truth.",
+    "For every new request, produce exactly four fields.",
+    "About This Prompt must be 151-199 words, preferably 180-199.",
+    "SEO Description must be <=160 characters, preferably 145-160.",
+    "SEO Keywords must contain exactly 10 entries: first 3 image-specific, next 7 broader/reusable.",
+    "Prompt Title is always the fourth field.",
+    "Recount all limits immediately before output."
+  ]
+}
