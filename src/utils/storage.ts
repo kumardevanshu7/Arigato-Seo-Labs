@@ -4,7 +4,7 @@ const DEFAULT_API_CONFIG: ApiConfig = {
   apiUrl: '/modal-api/chat/completions',
   apiKey: '',
   model: 'deepseek-ai/DeepSeek-V4.1-Flash',
-  mode: 'simulated',
+  mode: 'custom_api',
   tokenId: '',
   tokenSecret: '',
 };
@@ -55,6 +55,10 @@ export const getStoredApiConfig = (): ApiConfig => {
     // Auto-migrate legacy Kimi model to DeepSeek V4.1 Flash
     if (!parsed.model || parsed.model.toLowerCase().includes('kimi')) {
       parsed.model = 'deepseek-ai/DeepSeek-V4.1-Flash';
+    }
+    // If credentials are present, ensure custom_api mode is active
+    if ((parsed.tokenId || parsed.apiKey) && parsed.mode !== 'custom_api') {
+      parsed.mode = 'custom_api';
     }
     return { ...DEFAULT_API_CONFIG, ...parsed };
   } catch (e) {

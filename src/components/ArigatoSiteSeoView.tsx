@@ -29,6 +29,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
   const [extraGuidance, setExtraGuidance] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string>('');
+  const [visualHint, setVisualHint] = useState<string>('');
 
   const [subjectFocus, setSubjectFocus] = useState<'auto' | 'solo_female' | 'couple' | 'solo_male'>('auto');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -65,6 +66,7 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
           activeKeywords,
           pinnedKeywords,
           subjectFocus,
+          visualHint: visualHint || undefined,
         },
         (step, percent, msg) => {
           setProgressStep(step);
@@ -149,13 +151,15 @@ export const ArigatoSiteSeoView: React.FC<ArigatoSiteSeoViewProps> = ({
               </label>
               <ImageDropzone
                 imagePreview={imagePreview}
-                onImageSelected={(dataUrl, name) => {
+                onImageSelected={(dataUrl, name, hint) => {
                   setImagePreview(dataUrl);
                   setImageFileName(name);
+                  if (hint) setVisualHint(hint);
                 }}
                 onImageRemoved={() => {
                   setImagePreview(null);
                   setImageFileName('');
+                  setVisualHint('');
                 }}
                 isScanning={isGenerating}
               />

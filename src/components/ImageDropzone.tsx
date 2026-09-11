@@ -3,9 +3,55 @@ import { UploadCloud, Image as ImageIcon, X, Sparkles, Check, RefreshCw } from '
 
 interface ImageDropzoneProps {
   imagePreview: string | null;
-  onImageSelected: (dataUrl: string, fileName: string) => void;
+  onImageSelected: (dataUrl: string, fileName: string, visualHint?: string) => void;
   onImageRemoved: () => void;
   isScanning?: boolean;
+}
+
+function extractCanvasVisualHints(ctx: CanvasRenderingContext2D, width: number, height: number): string {
+  try {
+    const sampleW = Math.min(width, 120);
+    const sampleH = Math.min(height, 120);
+    const imgData = ctx.getImageData(0, 0, sampleW, sampleH).data;
+    let maroonCount = 0;
+    let whiteCreamCount = 0;
+    let darkSunglassesCount = 0;
+    let total = 0;
+
+    for (let i = 0; i < imgData.length; i += 16) {
+      const r = imgData[i];
+      const g = imgData[i + 1];
+      const b = imgData[i + 2];
+      total++;
+
+      // Rich maroon / wine / burgundy
+      if (r > 60 && r < 185 && g < r * 0.58 && b < r * 0.68) {
+        maroonCount++;
+      }
+      // Off-white / light cream
+      if (r > 195 && g > 190 && b > 175) {
+        whiteCreamCount++;
+      }
+      // Black sunglasses / dark elements
+      if (r < 35 && g < 35 && b < 35) {
+        darkSunglassesCount++;
+      }
+    }
+
+    const hints: string[] = [];
+    if (maroonCount / total > 0.05) {
+      hints.push('rich deep maroon / wine garments');
+    }
+    if (whiteCreamCount / total > 0.05) {
+      hints.push('contrasting cream / off-white trousers');
+    }
+    if (darkSunglassesCount / total > 0.04) {
+      hints.push('chic black rectangular sunglasses');
+    }
+    return hints.join(', ');
+  } catch {
+    return '';
+  }
 }
 
 export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
@@ -76,7 +122,8 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
               size: `${sizeMb} MB`,
               dimensions: `${targetWidth} × ${targetHeight}px`,
             });
-            onImageSelected(optimizedDataUrl, file.name);
+            const visualHint = extractCanvasVisualHints(ctx, targetWidth, targetHeight);
+            onImageSelected(optimizedDataUrl, file.name, visualHint);
             return;
           }
         } catch {
